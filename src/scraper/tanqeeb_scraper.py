@@ -5,7 +5,7 @@ import datetime
 import time
 import random
 import os
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import re
 
 # Request headers — mimicking a real browser so the site doesn't block us or detect a bot
 HEADERS = {
@@ -20,14 +20,10 @@ HEADERS = {
 session = rs.Session()
 session.headers.update(HEADERS)
 
-# How many job-description pages to fetch at the same time.
-# Lowered from 8 -> 4 since higher parallelism seems to be triggering the site's rate limiting (403s).
-MAX_WORKERS = 4
-
 # Retry settings: if we get a 403/429 (blocked/rate-limited) or a network error
 # (connection dropped, DNS failure, timeout), wait and try again instead of giving up immediately.
-MAX_RETRIES = 5
-BASE_BACKOFF = 5  # seconds; grows with each retry (5, 10, 20, 40, 80...)
+MAX_RETRIES = 7
+BASE_BACKOFF = 5  # seconds; grows with each retry (5, 10, 20, 40, 80, 160, 320...)
 
 # ---------------------------------------------------------------------------
 # Output path: works both when run locally and inside Docker.
@@ -42,16 +38,6 @@ OUTPUT_DIR = os.environ.get("OUTPUT_DIR", DEFAULT_OUTPUT_DIR)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
-def extract(card, class_name):
-    """
-    Generic helper: finds an element inside a job card by its CSS class
-    and returns its stripped text, or an empty string "" if the element
-    doesn't exist (avoids repeating the same try/except logic for every field)
-    """
-    el = card.find(class_=class_name)
-    return el.get_text(strip=True) if el else ""
-
-
 def get_with_retry(url, max_retries=MAX_RETRIES):
     """
     GETs a URL, retrying with growing delays if we hit:
@@ -59,7 +45,6 @@ def get_with_retry(url, max_retries=MAX_RETRIES):
       - a network-level exception (dropped connection, DNS failure, timeout)
     Returns the final response, or None if every retry was exhausted
     without ever getting a response back.
-    A small random jitter is added so parallel threads don't all retry at the exact same moment.
     """
     for attempt in range(max_retries):
         try:
@@ -73,53 +58,195 @@ def get_with_retry(url, max_retries=MAX_RETRIES):
         if response.status_code == 200:
             return response
 
-        if response.status_code in (403, 429):
+        if response.status_code in (403, 429, 502, 503, 504):
             wait = BASE_BACKOFF * (2 ** attempt) + random.uniform(0, 2)
             print(f"  Got {response.status_code} on {url} — retry {attempt + 1}/{max_retries}, waiting {wait:.1f}s")
             time.sleep(wait)
             continue
 
-        # Any other status code:
-        # - 404/410 = the job posting is gone/removed permanently -> retrying won't help, skip immediately
-        # - other codes (500, etc.) -> also not worth retrying here, return as-is
-        if response.status_code in (404, 410):
-            print(f"  Job page gone (status {response.status_code}) on {url} — skipping, no retry")
+        # Any other status code (404/410/500...) — not worth retrying, return as-is
         return response
 
-    # Ran out of retries without ever getting a usable response (e.g. persistent network outage)
     print(f"  Giving up on {url} — exhausted all {max_retries} retries")
     return None
 
 
-def fetch_description(job_url):
+def attr(card, name, default=None):
     """
-    Fetches a single job's full description from its own page.
-    Returns (job_url, description) so we can match it back up later.
+    Shorthand for reading a data-job-* attribute off a job card. Returns `default`
+    (None) both when the attribute is missing AND when it's present but empty
+    (e.g. data-job-salary="") — the site uses "" for "not provided", but we want
+    that to show up as a real empty/NULL cell in the CSV, not as a literal "" string.
     """
-    if not job_url:
-        return job_url, ""
+    value = card.get(name)
+    if not isinstance(value, str):
+        return default
+    value = value.strip()
+    return value if value else default
 
-    full_url = job_url if job_url.startswith("http") else "https://saudi.tanqeeb.com" + job_url
-    try:
-        job_response = get_with_retry(full_url)
-        if job_response is None or job_response.status_code != 200:
-            status = job_response.status_code if job_response is not None else "no response"
-            if job_response is None or job_response.status_code not in (404, 410):
-                print(f"Giving up on {full_url} after retries (status {status})")
-            return job_url, ""
-        job_soup = bs(job_response.content, "lxml")
-        description_el = job_soup.find(id="jobDescriptionBody")
-        return job_url, (description_el.get_text(strip=True) if description_el else "")
-    except Exception as e:
-        print(f"Failed to fetch description for {full_url}: {e}")
-        return job_url, ""
+
+# Tanqeeb's "state" field is actually the CITY (e.g. "Jeddah", "Riyadh"), not the
+# official Saudi administrative region. The site never exposes region at all, so we
+# derive it ourselves from a lookup table built from Saudi Arabia's 13 administrative
+# regions, matched against the exact city names/spellings this site uses in its own
+# location filter (e.g. "Al Damam" for Dammam, "Nagran" for Najran).
+CITY_TO_REGION = {
+    "Riyadh": "Riyadh Region",
+    "Jeddah": "Makkah Region",
+    "Makkah": "Makkah Region",
+    "Taif": "Makkah Region",
+    "Al Taif": "Makkah Region",
+    "Rabigh": "Makkah Region",
+    "Medina": "Madinah Region",
+    "Madinah": "Madinah Region",
+    "Yanbu": "Madinah Region",
+    "Eastern": "Eastern Province",
+    "Eastern Province": "Eastern Province",
+    "Al Damam": "Eastern Province",
+    "Dammam": "Eastern Province",
+    "Khobar": "Eastern Province",
+    "Dhahran": "Eastern Province",
+    "Jubail": "Eastern Province",
+    "Qatif": "Eastern Province",
+    "Al Ahsa": "Eastern Province",
+    "Hafar Al-Batin": "Eastern Province",
+    "Asir": "Asir Region",
+    "Abha": "Asir Region",
+    "Khamis Mushait": "Asir Region",
+    "Bisha": "Asir Region",
+    "Tabuk": "Tabuk Region",
+    "Qassim": "Qassim Region",
+    "Hail": "Hail Region",
+    "Jouf": "Al Jouf Region",
+    "Al Jouf": "Al Jouf Region",
+    "Bahah": "Al Bahah Region",
+    "Al Bahah": "Al Bahah Region",
+    "Jizan": "Jazan Region",
+    "Nagran": "Najran Region",
+    "Najran": "Najran Region",
+    "Northern Borders": "Northern Borders Region",
+}
+
+# Labels the site uses for workplace nature — filtered out when we fall back to
+# parsing the "On-site - Saudi - Jeddah" style text (see parse_location below).
+_WORKPLACE_LABELS = {"on-site", "remote", "hybrid"}
+
+
+def parse_location(card):
+    """
+    Returns (country, city, region) for a job card.
+    Prefers the direct data-job-country / data-job-state attributes (present on
+    ~85% of cards). When either is missing, falls back to parsing the human-readable
+    "On-site - Saudi - Jeddah" text in data-job-workplace-location, which is present
+    on effectively every card. `region` is never in the source data — it's derived
+    from CITY_TO_REGION and will be "" for any city not yet in that table.
+    """
+    country = attr(card, "data-job-country")
+    city = attr(card, "data-job-state")
+
+    if not country or not city:
+        loc_text = attr(card, "data-job-workplace-location") or attr(card, "data-job-location") or ""
+        parts = [p.strip() for p in loc_text.split("-") if p.strip()]
+        parts = [p for p in parts if p.lower() not in _WORKPLACE_LABELS]
+        if not country and parts:
+            country = parts[0]
+        if not city and len(parts) >= 2:
+            city = parts[-1]
+
+    region = CITY_TO_REGION.get(city)  # None if city is None or not in the table
+    return country, city, region
+
+
+# Some employers paste rich content (e.g. an entire Word/Excel table) into the job
+# description, and the site double-escapes it — one level of HTML-entity escaping to
+# store it safely inside the hidden div, PLUS a second level for the pasted content
+# itself. A single get_text() only undoes the first level, leaving literal tag text
+# like "<table><tr><td>..." in the result instead of clean text.
+_TAG_LIKE = re.compile(r"</?[a-zA-Z][a-zA-Z0-9]*(?:\s[^<>]*)?/?>")
+
+
+def clean_description(desc_el):
+    """
+    Extracts the description text from its hidden div, re-parsing as HTML repeatedly
+    (up to 3 passes) until no more literal HTML tags remain — this handles both
+    normally-escaped and double-escaped descriptions the same way.
+    """
+    if desc_el is None:
+        return None
+
+    text = desc_el.get_text(separator=" ", strip=True)
+    for _ in range(3):
+        if not _TAG_LIKE.search(text):
+            break
+        text = bs(text, "lxml").get_text(separator=" ", strip=True)
+
+    # Collapse repeated whitespace left over from stripped tags/table cells
+    text = re.sub(r"\s+", " ", text).strip()
+    return text or None
+
+
+def parse_job_card(card):
+    """
+    Extracts a full job record straight from a single <article data-drawer-trigger="job-card">
+    element on the search-results page. Tanqeeb bakes essentially the entire job record —
+    including experience, salary, industry, location, and even the FULL description — into
+    data-job-* attributes and a hidden div on this same page. That means we never need to
+    open the job's own page just to read its description, which is what was making the old
+    version of this script so slow (one extra HTTP request per job).
+
+    Note: career_level, nationality, local_only, skills, district, and contact_name/email/phone
+    are deliberately NOT extracted here — a full-run check showed they're 90-100% empty across
+    the site (employers almost never fill them in), so keeping them just added noise to the CSV.
+    is_confidential_company, education, gender, and keywords were dropped too, to keep the
+    output aligned with the star_schema dims (dim_location, dim_employment_type, etc.).
+    """
+    job_url = attr(card, "data-job-url")
+
+    # The full description is stored HTML-escaped inside a hidden div — sometimes
+    # double-escaped when an employer pastes a rich table. clean_description()
+    # handles both cases and returns plain text (or None if the div is missing/empty).
+    desc_el = card.find(class_="job-card-description-source")
+    description = clean_description(desc_el)
+
+    country, city, region = parse_location(card)
+
+    return {
+        "job_id": attr(card, "data-job-id"),
+        "job_title": attr(card, "data-job-name"),
+        "url": job_url,
+        "company_name": attr(card, "data-job-company"),
+        "company_url": attr(card, "data-job-company-url"),
+        "city": city,
+        "region": region,
+        "country": country,
+        # employment_type (dim_employment_type): Full Time / Part Time / Contract / Internship...
+        "employment_type": attr(card, "data-job-type"),
+        # workplace_type: On-site / Remote / Hybrid — kept separate from employment_type on purpose
+        "workplace_type": attr(card, "data-job-workplace"),
+        "experience_years": attr(card, "data-job-experience"),
+        "job_category": attr(card, "data-job-categories"),
+        "industry": attr(card, "data-job-industry"),
+        "salary": attr(card, "data-job-salary"),
+        "job_source": attr(card, "data-job-source"),
+        "job_posted_date": attr(card, "data-job-date"),
+        "job_status": "closed" if attr(card, "data-job-closed") == "1" else "active",
+        "collected_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "description": description,
+    }
 
 
 # Search query parameters sent with each page URL (site filters: keywords, country, category...)
-QUERY = "keywords=&country=54&state=0&category=-1&workplace=0&search_period=0&lang=all"
+# order_by=most_recent (instead of the site's default "relevance") is critical here:
+# relevance ranking shifts every time a new job gets posted, which — combined with
+# offset-based page numbers — causes "pagination drift": pages you already scraped
+# reshuffle underneath you, so later pages return jobs you already saw instead of new
+# ones. Sorting by date is stable regardless of how many jobs get posted mid-scrape.
+QUERY = "keywords=&country=54&state=0&category=-1&workplace=0&search_period=0&lang=all&order_by=most_recent"
 
 all_jobs = []       # list to store every job collected across all pages
-seen_urls = set()   # set to track job URLs we've already collected, to avoid duplicates
+seen_ids = set()    # set to track job IDs we've already collected, to avoid duplicates
+consecutive_empty_pages = 0
+MAX_CONSECUTIVE_EMPTY_PAGES = 3  # stop early if pagination is drifting (site reshuffled underneath us)
 
 try:
     # Loop through pages from 1 to 9999 (large upper bound as a safety cap; actual stopping happens below)
@@ -133,92 +260,75 @@ try:
             print(f"Page {page}: failed with status {status} after retries — stopping")
             break
 
-        # Parse the page's HTML into a BeautifulSoup object so we can search through it
         soup = bs(response.content, "lxml")
 
-        # Grab all job cards on this page
-        job_cards = soup.find_all(class_="search-job-card")
+        # Each job card is an <article data-drawer-trigger="job-card" data-job-id="..." ...>.
+        # This single selector gets us the element that carries ALL the data-job-* attributes
+        # AND the hidden description div — no per-job page visit required.
+        job_cards = soup.select('article[data-drawer-trigger="job-card"]')
         print(f"Page {page}: found {len(job_cards)} jobs")
 
-        # No job cards on this page means we've reached the last page → stop
         if len(job_cards) == 0:
             print("No more jobs. Stopping.")
             break
 
-        # First pass: build the basic job records (no description yet) and collect
-        # the list of new URLs whose descriptions we still need to fetch.
-        page_jobs = {}       # job_url -> job dict (without description yet)
-        urls_to_fetch = []   # new, not-yet-seen job URLs on this page
-
+        new_on_page = 0
         for card in job_cards:
-            title_el = card.find(class_="search-job-title-link")
-            job_url = title_el.get("href") if title_el else ""
-
-            if job_url in seen_urls:
+            job_id = attr(card, "data-job-id")
+            if job_id and job_id in seen_ids:
                 continue
-            seen_urls.add(job_url)
+            if job_id:
+                seen_ids.add(job_id)
 
-            # The site reuses the same "search-job-tag" class for BOTH the job-type
-            # tag (Full Time / Part Time) AND the experience tag (e.g. "2 to 6 years").
-            # card.find(class_="search-job-tag") used to just grab whichever one came
-            # first in the HTML, mixing the two together in the job_type column.
-            # grab ALL tag elements, identify the experience one specifically,
-            # and treat any other tag as the job type.
-            tag_els = card.select(".search-job-tag")
-            experience_el = card.select_one(".search-job-tag.search-job-tag-exp")
-            job_type_el = next((el for el in tag_els if el is not experience_el), None)
+            all_jobs.append(parse_job_card(card))
+            new_on_page += 1
 
-            job = {
-                "job_title": extract(card, "search-job-title-link"),
-                "url": job_url,
-                "company_name": extract(card, "search-job-company-name"),
-                "location": extract(card, "search-job-workplace-location"),
-                "job_posted_date": extract(card, "search-job-date"),
-                "job_type": job_type_el.get_text(strip=True) if job_type_el else "",
-                "experience_years": experience_el.get_text(strip=True) if experience_el else "",
-                "job_source": extract(card, "search-job-source"),
-                "collected_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "description": "",
-            }
-            page_jobs[job_url] = job
-            if job_url:
-                urls_to_fetch.append(job_url)
+        print(f"  -> {new_on_page} new jobs added (total so far: {len(all_jobs)})")
 
-        # Second pass: fetch all descriptions for this page's jobs IN PARALLEL
-        # instead of one-by-one — this is the big time saver.
-        if urls_to_fetch:
-            with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-                futures = [executor.submit(fetch_description, u) for u in urls_to_fetch]
-                for future in as_completed(futures):
-                    job_url, description = future.result()
-                    page_jobs[job_url]["description"] = description
-
-        all_jobs.extend(page_jobs.values())
+        if new_on_page == 0:
+            consecutive_empty_pages += 1
+            if consecutive_empty_pages >= MAX_CONSECUTIVE_EMPTY_PAGES:
+                print(
+                    f"  {consecutive_empty_pages} consecutive pages with 0 new jobs — "
+                    "pagination likely drifted (site reshuffled while scraping). Stopping."
+                )
+                break
+        else:
+            consecutive_empty_pages = 0
 
         # Small delay between PAGES with a bit of random jitter, so requests
         # don't look perfectly robotic (exactly N seconds apart every time).
+        # No more per-job requests, so this is now the ONLY delay in the whole run.
         time.sleep(1 + random.uniform(0, 1))
 
 except Exception as e:
-    # Catch anything unexpected (not just network errors) so we still save
-    # whatever was collected so far instead of losing it all.
+    # Catch anything unexpected so we still save whatever was collected so far
+    # instead of losing it all.
     print(f"Unexpected error, stopping early: {e}")
 
 finally:
     print(f"\nTotal unique jobs collected: {len(all_jobs)}")
 
     if all_jobs:
-        # Output filename includes today's date, so each run produces a distinct file
-        filename = os.path.join(OUTPUT_DIR, f"{datetime.date.today():%Y-%m-%d}_tanqeeb_jobs.csv")
+        # Includes the time (not just the date) so re-running the script the same day
+        # never collides with a previous file that might still be open (e.g. in Excel),
+        # which is what caused the earlier PermissionError.
+        filename = os.path.join(OUTPUT_DIR, f"{datetime.datetime.now():%Y-%m-%d_%H-%M}_tanqeeb_jobs.csv")
 
         df = pd.DataFrame(all_jobs)
         df = df[[
-            "job_title", "url", "company_name", "location", "job_posted_date",
-            "job_type", "experience_years", "job_source", "collected_at", "description",
+            "job_id", "job_title", "url", "company_name", "company_url",
+            "city", "region", "country",
+            "employment_type", "workplace_type",
+            "experience_years", "job_category", "industry", "salary",
+            "job_source", "job_posted_date", "job_status", "collected_at", "description",
         ]]
 
         # If the URL is relative (starts with /), prepend the site's base URL
         df["url"] = df["url"].apply(
+            lambda u: "https://saudi.tanqeeb.com" + u if isinstance(u, str) and u.startswith("/") else u
+        )
+        df["company_url"] = df["company_url"].apply(
             lambda u: "https://saudi.tanqeeb.com" + u if isinstance(u, str) and u.startswith("/") else u
         )
 
