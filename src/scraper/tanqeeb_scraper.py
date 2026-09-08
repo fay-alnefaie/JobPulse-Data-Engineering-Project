@@ -189,7 +189,7 @@ def parse_job_card(card):
     """
     Extracts a full job record straight from a single <article data-drawer-trigger="job-card">
     element on the search-results page. Tanqeeb bakes essentially the entire job record —
-    including experience, salary, industry, location, and even the FULL description — into
+    including experience, industry, location, and even the FULL description — into
     data-job-* attributes and a hidden div on this same page. That means we never need to
     open the job's own page just to read its description, which is what was making the old
     version of this script so slow (one extra HTTP request per job).
@@ -226,7 +226,7 @@ def parse_job_card(card):
         "experience_years": attr(card, "data-job-experience"),
         "job_category": attr(card, "data-job-categories"),
         "industry": attr(card, "data-job-industry"),
-        "salary": attr(card, "data-job-salary"),
+        "is_salary_disclosed": attr(card, "data-job-salary") is not None,
         "job_source": attr(card, "data-job-source"),
         "job_posted_date": attr(card, "data-job-date"),
         "job_status": "closed" if attr(card, "data-job-closed") == "1" else "active",
@@ -320,7 +320,7 @@ finally:
             "job_id", "job_title", "url", "company_name", "company_url",
             "city", "region", "country",
             "employment_type", "workplace_type",
-            "experience_years", "job_category", "industry", "salary",
+            "experience_years", "job_category", "industry", "is_salary_disclosed",
             "job_source", "job_posted_date", "job_status", "collected_at", "description",
         ]]
 
