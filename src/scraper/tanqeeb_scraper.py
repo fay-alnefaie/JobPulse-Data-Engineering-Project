@@ -211,7 +211,7 @@ def parse_job_card(card):
     country, city, region = parse_location(card)
 
     return {
-        "job_id": attr(card, "data-job-id"),
+        "source_job_id": attr(card, "data-job-id"),
         "job_title": attr(card, "data-job-name"),
         "url": job_url,
         "company_name": attr(card, "data-job-company"),
@@ -317,7 +317,7 @@ finally:
 
         df = pd.DataFrame(all_jobs)
         df = df[[
-            "job_id", "job_title", "url", "company_name", "company_url",
+            "source_job_id", "job_title", "url", "company_name", "company_url",
             "city", "region", "country",
             "employment_type", "workplace_type",
             "experience_years", "job_category", "industry", "is_salary_disclosed",
