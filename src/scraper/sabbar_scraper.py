@@ -615,4 +615,5 @@ if __name__ == "__main__":
         save_csv(all_jobs, filename)
         print(f"\nSaved {len(all_jobs)} jobs to {filename}")
     else:
-        print("\nNo jobs collected — nothing to save.")
+        print("\nNo jobs collected — nothing to save.") 
+        # sumayah 
