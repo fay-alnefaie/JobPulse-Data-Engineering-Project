@@ -9,7 +9,6 @@ import re
 import json
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
 # ---------------------------------------------------------------------------
 # Sabbar (sabbar.com) job scraper — CONCURRENT version.
 #
@@ -27,8 +26,28 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 #   3) Output path no longer has any Claude-sandbox-specific logic — it's
 #      just "<script folder>/output" by default, overridable with the
 #      OUTPUT_DIR environment variable.
+#   4) Added deduplication based on `source_job_id` inside `save_csv()`
+#      safely preserving rows with missing IDs and printing stats.
+#
+# CHANGES TO ALIGN OUTPUT WITH THE TANQEEB SCRAPER (this pass):
+#   5) job_source now passes through Sabbar's raw value with no relabeling
+#      (previously "IN_PLATFORM" -> "Sabbar" and "AGGREGATED" -> "Aggregated
+#      (source not specified)" were invented labels that didn't exist on the
+#      tanqeeb side, where job_source is always the site's raw attribute
+#      value untouched). This keeps the column comparable across sources.
+#   6) CONTRACT_TYPE_MAP was missing a "CONTRACT" -> "Contract" entry, so a
+#      Sabbar job with that contract code was slipping through as the raw
+#      code instead of the human label tanqeeb already produces for it.
+#   7) workplace_type: Sabbar's WORKPLACE_TYPE_MAP has no entry for
+#      "Hybrid" — it maps ON_SITE/REMOTE/FIELD, and FIELD is kept as its
+#      own distinct value ("Field") rather than merged into tanqeeb's
+#      "Hybrid". These are NOT confirmed to mean the same thing (Field
+#      could mean field/on-location work rather than a mixed on-site/remote
+#      schedule), so silently merging them risks mislabeling real data on
+#      a shared dashboard. If you confirm from real data that Sabbar's
+#      "Field" jobs are actually hybrid arrangements, update
+#      WORKPLACE_TYPE_MAP below to map "FIELD" -> "Hybrid" instead.
 # ---------------------------------------------------------------------------
-
 HEADERS = {
     "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
     "accept-encoding": "gzip, deflate, br",
@@ -36,10 +55,8 @@ HEADERS = {
     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
     "referer": "https://sabbar.com/en/jobs",
 }
-
 MAX_RETRIES = 7
 BASE_BACKOFF = 5  # seconds; grows with each retry (5, 10, 20, 40, 80, 160, 320...)
-
 # Script lives at <project_root>/src/scraper/sabbar_scraper.py, so going up
 # two levels from the script's folder lands on <project_root>, and the
 # default output goes to <project_root>/data/raw_data.
@@ -48,18 +65,13 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
 DEFAULT_OUTPUT_DIR = os.path.join(PROJECT_ROOT, "data", "raw_data")
 OUTPUT_DIR = os.environ.get("OUTPUT_DIR", DEFAULT_OUTPUT_DIR)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-
 _thread_local = threading.local()
-
-
 def get_session():
     if not hasattr(_thread_local, "session"):
         s = rs.Session()
         s.headers.update(HEADERS)
         _thread_local.session = s
     return _thread_local.session
-
-
 def get_with_retry(url, max_retries=MAX_RETRIES):
     session = get_session()
     for attempt in range(max_retries):
@@ -75,22 +87,16 @@ def get_with_retry(url, max_retries=MAX_RETRIES):
             print(f"  Network error on {url}: {e} — retry {attempt + 1}/{max_retries}, waiting {wait:.1f}s")
             time.sleep(wait)
             continue
-
         if response.status_code == 200:
             return response
-
         if response.status_code in (403, 429, 502, 503, 504):
             wait = BASE_BACKOFF * (2 ** attempt) + random.uniform(0, 2)
             print(f"  Got {response.status_code} on {url} — retry {attempt + 1}/{max_retries}, waiting {wait:.1f}s")
             time.sleep(wait)
             continue
-
         return response
-
     print(f"  Giving up on {url} — exhausted all {max_retries} retries")
     return None
-
-
 # Region lookup stays keyed by internal city CODE (e.g. "SA_RIYADH"), which
 # does not change between /ar/ and /en/ pages, so this table is unaffected
 # by the ar->en switch.
@@ -125,13 +131,17 @@ CITY_CODE_TO_REGION = {
     "SA_NAJRAN": "Najran Region",
     "SA_ARAR": "Northern Borders Region",
 }
-
 CONTRACT_TYPE_MAP = {
     "FULLTIME": "Full Time",
     "PARTTIME": "Part Time",
+    "CONTRACT": "Contract",
     "SEASONAL": "Seasonal",
     "INTERNSHIP": "Internship",
 }
+# NOTE: "FIELD" is intentionally kept as its own distinct value ("Field")
+# rather than mapped to tanqeeb's "Hybrid" — the two are not confirmed to
+# mean the same workplace arrangement. See note (7) at the top of this file
+# before changing this if you later confirm they're equivalent.
 WORKPLACE_TYPE_MAP = {
     "ON_SITE": "On-site",
     "REMOTE": "Remote",
@@ -141,13 +151,10 @@ JOB_STATUS_MAP = {
     "OPEN": "active",
     "CLOSED": "closed",
 }
-
 # Switched from /ar/jobs/ to /en/jobs/ — this is what makes city/country
 # come back in English straight from Sabbar, no translation needed.
 JOB_LINK_RE = re.compile(r'^/en/jobs/[^"?#]+/id-[0-9a-fA-F-]{36}$')
 JOB_ID_RE = re.compile(r'/id-([0-9a-fA-F-]{36})')
-
-
 def _extract_push_strings(html):
     results = []
     marker = 'self.__next_f.push([1,"'
@@ -169,19 +176,13 @@ def _extract_push_strings(html):
         results.append(html[start + len(marker):i])
         idx = i + 1
     return results
-
-
 def _unescape_js_string(s):
     try:
         return json.loads('"' + s + '"')
     except Exception:
         return s
-
-
 def build_flight_buffer(html):
     return "".join(_unescape_js_string(p) for p in _extract_push_strings(html))
-
-
 def extract_json_object(buffer, marker_substring):
     idx = buffer.find(marker_substring)
     if idx == -1:
@@ -212,8 +213,6 @@ def extract_json_object(buffer, marker_substring):
                     return buffer[brace_start:i + 1]
         i += 1
     return None
-
-
 def get_big_job_json(buffer, job_uuid):
     for marker in (f'"id":"{job_uuid}","partnerId"', f'"id":"{job_uuid}","partnerName"'):
         obj_str = extract_json_object(buffer, marker)
@@ -223,8 +222,6 @@ def get_big_job_json(buffer, job_uuid):
             except Exception:
                 continue
     return None
-
-
 def extract_jsonld_jobposting(html):
     for m in re.finditer(
         r'<script type="application/ld\+json">(\{.*?"@type":"JobPosting".*?\})</script>',
@@ -235,16 +232,12 @@ def extract_jsonld_jobposting(html):
         except Exception:
             continue
     return None
-
-
 def clean_job_title_from_h1(soup):
     h1 = soup.find("h1")
     if not h1:
         return None
     title = h1.get_text(" ", strip=True)
     return title or None
-
-
 def first_present(*values):
     """Return the first value that isn't None/''  (0 and False are kept,
     since they can be legit answers, e.g. 0 years of experience)."""
@@ -252,8 +245,6 @@ def first_present(*values):
         if v is not None and v != "":
             return v
     return None
-
-
 def first_key(d, keys):
     """Return the first truthy value found among `keys` in dict `d`.
     Used to remove the repeated 'try key A, else key B, else key C' blocks
@@ -266,42 +257,32 @@ def first_key(d, keys):
         if v:
             return v
     return None
-
-
 def _format_num(raw):
     """'5' -> '5', '5.0' -> '5', '5.5' -> '5.5' — used when rebuilding a
     range string so we don't end up with '5.0-10.0'."""
     n = float(raw)
     return str(int(n)) if n.is_integer() else str(n)
-
-
 def normalize_experience_years(value):
     if value is None:
         return None
-
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         return value
-
     value = str(value).strip()
     if not value:
         return None
-
     # Reject date-like values: 02/05/2026, 02-05-2026, etc.
     if re.fullmatch(r"\d{1,2}[/-]\d{1,2}[/-]\d{2,4}", value):
         return None
-
     # Accept simple values such as "2" or "2 years"
     match = re.fullmatch(r"(\d+(?:\.\d+)?)\s*(?:years?|yrs?)?", value, re.IGNORECASE)
     if match:
         number = float(match.group(1))
         return int(number) if number.is_integer() else number
-
     # "+10" / "10+" style values (seen in Sabbar's own enum labels, e.g.
     # "experienceYears_+10": "+10 Years") mean "10 years or more".
     plus_match = re.fullmatch(r"\+?\s*(\d+(?:\.\d+)?)\s*\+?", value)
     if plus_match and ("+" in value):
         return f"{_format_num(plus_match.group(1))}+ yrs"
-
     # Ranges like "5-10" or "5 - 10 years" — keep the full range as text
     # (e.g. "5-10 yrs"). The " yrs" suffix is deliberate: a bare "5-10" gets
     # auto-converted to a date (e.g. "02/05/2026") the moment the CSV is
@@ -310,11 +291,8 @@ def normalize_experience_years(value):
     if range_match:
         lo, hi = range_match.group(1), range_match.group(2)
         return f"{_format_num(lo)}-{_format_num(hi)} yrs"
-
     # Do not guess for other unexpected text.
     return None
-
-
 # Key-name candidates to try, in order, for fields Sabbar doesn't expose
 # under one guaranteed fixed name. Kept as module-level constants so the
 # extraction functions below stay one-liners.
@@ -327,15 +305,12 @@ INDUSTRY_KEYS = (
     "industryValue", "industry", "sectorValue", "sector",
     "categoryValue", "jobCategoryValue", "jobCategory",
 )
-
-
 def get_experience_years_raw(big, jsonld):
     """Years of experience: try known keys in `big`, else fall back to
     JSON-LD's experienceRequirements.monthsOfExperience (converted to years)."""
     val = first_key(big, EXPERIENCE_KEYS)
     if val is not None:
         return val
-
     exp_req = jsonld.get("experienceRequirements") if jsonld else None
     if isinstance(exp_req, dict):
         months = exp_req.get("monthsOfExperience")
@@ -346,52 +321,32 @@ def get_experience_years_raw(big, jsonld):
                 return None
     elif isinstance(exp_req, (str, int, float)):
         return exp_req
-
     return None
-
-
 def get_industry_raw(big, jsonld):
     """Industry: try known keys in `big`, else fall back to JSON-LD's
     'industry' / 'occupationalCategory'."""
     return first_key(big, INDUSTRY_KEYS) or first_key(jsonld, ("industry", "occupationalCategory"))
-
-
 def get_explicit_job_source(big, jsonld):
+    """Raw pass-through of whatever source value Sabbar provides — mirrors
+    tanqeeb's behavior, where job_source is always the site's raw attribute
+    value (data-job-source) with no relabeling or translation applied.
+    Previously this mapped "IN_PLATFORM" -> "Sabbar" and "AGGREGATED" ->
+    "Aggregated (source not specified)", which invented labels that don't
+    exist on the tanqeeb side and made the column non-comparable across
+    the two sources."""
     if not big:
         return None
-
-    for key in ("sourceName", "sourceValue", "jobSourceName", "jobSource"):
-        value = big.get(key)
-        if value:
-            return str(value).strip()
-
-    source = big.get("source")
-    if source == "IN_PLATFORM":
-        return "Sabbar"
-    if source == "AGGREGATED":
-        return "Aggregated (source not specified)"
-
-    if source:
-        return str(source).strip()
-
-    return None
-
-
+    return first_key(big, ("sourceName", "sourceValue", "jobSourceName", "jobSource", "source"))
 def parse_job_detail(url, delay_range=(0.6, 1.4)):
     time.sleep(random.uniform(*delay_range))
-
     resp = get_with_retry(url)
     if resp is None or resp.status_code != 200:
         return None
-
     html = resp.text
     soup = bs(html, "lxml")
-
     m = JOB_ID_RE.search(url)
     job_uuid = m.group(1) if m else None
-
     jsonld = extract_jsonld_jobposting(html) or {}
-
     big = None
     if job_uuid:
         try:
@@ -399,16 +354,13 @@ def parse_job_detail(url, delay_range=(0.6, 1.4)):
             big = get_big_job_json(buffer, job_uuid)
         except Exception:
             big = None
-
     job_title = first_present(
         clean_job_title_from_h1(soup),
         big.get("jobPositionValue") if big else None,
     )
-
     # /en/ path here too, matching JOB_LINK_RE above
     company_link = soup.select_one('a[href*="/en/jobs/companies/"]')
     company_href = company_link.get("href") if company_link else None
-
     company_name = first_present(
         company_link.get_text(strip=True) if company_link else None,
         big.get("partnerName") if big else None,
@@ -418,22 +370,17 @@ def parse_job_detail(url, delay_range=(0.6, 1.4)):
         "https://sabbar.com" + company_href if company_href and company_href.startswith("/") else None,
         f"https://sabbar.com/en/jobs/companies/{big['partnerSlug']}" if big and big.get("partnerSlug") else None,
     )
-
     city_code = big.get("city") if big else None
     city = (big.get("cityValue") if big else None) or None
     region = CITY_CODE_TO_REGION.get(city_code) if city_code else None
     country = (big.get("countryValue") if big else None) or "Saudi Arabia"
-
     contract_code = big.get("contractType") if big else None
     employment_type = CONTRACT_TYPE_MAP.get(contract_code, contract_code)
-
     workplace_code = big.get("workplaceType") if big else None
     workplace_type = WORKPLACE_TYPE_MAP.get(workplace_code, workplace_code)
-
     experience_years = normalize_experience_years(get_experience_years_raw(big, jsonld))
     industry = get_industry_raw(big, jsonld)
     job_category = first_key(big, ("jobCategoryValue", "categoryValue"))
-
     salary_val = big.get("salary") if big else None
     if salary_val is None:
         base_salary = jsonld.get("baseSalary") or {}
@@ -441,9 +388,7 @@ def parse_job_detail(url, delay_range=(0.6, 1.4)):
         if isinstance(value, dict):
             salary_val = value.get("value")
     is_salary_disclosed = salary_val is not None
-
     job_source = get_explicit_job_source(big, jsonld)
-
     job_posted_date = None
     created_date = big.get("createdDate") if big else None
     if created_date:
@@ -453,10 +398,8 @@ def parse_job_detail(url, delay_range=(0.6, 1.4)):
             job_posted_date = None
     if not job_posted_date:
         job_posted_date = jsonld.get("datePosted")
-
     job_status_code = big.get("jobStatus") if big else None
     job_status = JOB_STATUS_MAP.get(job_status_code, "active")
-
     description = jsonld.get("description")
     if description:
         description = re.sub(r"<[^>]+>", " ", str(description))
@@ -467,7 +410,6 @@ def parse_job_detail(url, delay_range=(0.6, 1.4)):
             description,
         )
         description = re.sub(r"\s+", " ", description).strip()
-
     return {
         "source_job_id": job_uuid,
         "job_title": job_title,
@@ -489,19 +431,15 @@ def parse_job_detail(url, delay_range=(0.6, 1.4)):
         "collected_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "description": description,
     }
-
-
 def collect_job_urls(max_pages=None, start_page=1):
     urls = []
     seen = set()
     page = start_page
     consecutive_empty = 0
     MAX_CONSECUTIVE_EMPTY = 3
-
     while True:
         if max_pages and page > start_page + max_pages - 1:
             break
-
         # /en/ path here too
         list_url = f"https://sabbar.com/en/jobs?page={page}"
         resp = get_with_retry(list_url)
@@ -509,7 +447,6 @@ def collect_job_urls(max_pages=None, start_page=1):
             status = resp.status_code if resp is not None else "no response (network error)"
             print(f"Listing page {page}: failed with status {status} — stopping")
             break
-
         soup = bs(resp.content, "lxml")
         page_urls = []
         for a in soup.find_all("a", href=True):
@@ -519,9 +456,7 @@ def collect_job_urls(max_pages=None, start_page=1):
                 if full not in seen:
                     seen.add(full)
                     page_urls.append(full)
-
         print(f"Listing page {page}: found {len(page_urls)} new job links (total so far: {len(seen)})")
-
         if not page_urls:
             consecutive_empty += 1
             if consecutive_empty >= MAX_CONSECUTIVE_EMPTY:
@@ -529,14 +464,10 @@ def collect_job_urls(max_pages=None, start_page=1):
                 break
         else:
             consecutive_empty = 0
-
         urls.extend(page_urls)
         page += 1
         time.sleep(1 + random.uniform(0, 1))
-
     return urls
-
-
 COLUMNS = [
     "source_job_id", "job_title", "url", "company_name", "company_url",
     "city", "region", "country",
@@ -544,28 +475,48 @@ COLUMNS = [
     "experience_years", "job_category", "industry", "is_salary_disclosed",
     "job_source", "job_posted_date", "job_status", "collected_at", "description",
 ]
-
 csv_lock = threading.Lock()
-
-
 def save_csv(jobs, filename):
     """Single place that writes the CSV — used for both the periodic
-    checkpoint saves and the final save, so the two never drift apart."""
-    pd.DataFrame(jobs)[COLUMNS].to_csv(filename, index=False, encoding="utf-8-sig")
-
-
+    checkpoint saves and the final save, so the two never drift apart.
+    Deduplicates based on `source_job_id` while preserving rows with missing IDs."""
+    df = pd.DataFrame(jobs)
+    if df.empty:
+        return
+    # Ensure all required columns exist
+    for col in COLUMNS:
+        if col not in df.columns:
+            df[col] = None
+    before_count = len(df)
+    # Filter rows with a valid source_job_id (not null, not empty, not string NaN)
+    has_id = (
+        df["source_job_id"].notna()
+        & (df["source_job_id"].astype(str).str.strip() != "")
+        & (df["source_job_id"].astype(str).str.lower() != "nan")
+        & (df["source_job_id"].astype(str).str.lower() != "none")
+    )
+    df_with_id = df[has_id]
+    df_without_id = df[~has_id]
+    # Deduplicate only valid IDs
+    df_with_id_dedup = df_with_id.drop_duplicates(subset=["source_job_id"], keep="first")
+    # Re-combine valid deduped rows with missing ID rows
+    df_clean = pd.concat([df_with_id_dedup, df_without_id], ignore_index=True)
+    duplicates_removed = before_count - len(df_clean)
+    after_count = len(df_clean)
+    print(f"Before deduplication: {before_count}")
+    print(f"Duplicate jobs removed: {duplicates_removed}")
+    print(f"After deduplication: {after_count}")
+    df_clean[COLUMNS].to_csv(filename, index=False, encoding="utf-8-sig")
 def scrape_details_concurrently(job_urls, max_workers=10, checkpoint_every=25,
                                  detail_delay=(0.6, 1.4), output_filename=None):
     all_jobs = []
     completed = 0
     total = len(job_urls)
-
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_url = {
             executor.submit(parse_job_detail, url, detail_delay): url
             for url in job_urls
         }
-
         for future in as_completed(future_to_url):
             url = future_to_url[future]
             try:
@@ -573,36 +524,26 @@ def scrape_details_concurrently(job_urls, max_workers=10, checkpoint_every=25,
             except Exception as e:
                 print(f"  Error parsing {url}: {e}")
                 row = None
-
             with csv_lock:
                 completed += 1
                 if row:
                     all_jobs.append(row)
-
                 if completed % 10 == 0 or completed == total:
                     print(f"  [{completed}/{total}] processed — {len(all_jobs)} collected so far")
-
                 if output_filename and completed % checkpoint_every == 0 and all_jobs:
                     save_csv(all_jobs, output_filename)
-
     return all_jobs
-
-
 if __name__ == "__main__":
     MAX_LISTING_PAGES = None
     MAX_JOBS = None
     MAX_WORKERS = 10
     CHECKPOINT_EVERY = 25
     DETAIL_DELAY = (0.6, 1.4)
-
     job_urls = collect_job_urls(max_pages=MAX_LISTING_PAGES)
     print(f"\nTotal unique job URLs collected: {len(job_urls)}")
-
     if MAX_JOBS:
         job_urls = job_urls[:MAX_JOBS]
-
     filename = os.path.join(OUTPUT_DIR, f"{datetime.datetime.now():%Y-%m-%d_%H-%M}_sabbar_jobs.csv")
-
     all_jobs = scrape_details_concurrently(
         job_urls,
         max_workers=MAX_WORKERS,
@@ -610,10 +551,8 @@ if __name__ == "__main__":
         detail_delay=DETAIL_DELAY,
         output_filename=filename,
     )
-
     if all_jobs:
         save_csv(all_jobs, filename)
         print(f"\nSaved {len(all_jobs)} jobs to {filename}")
     else:
-        print("\nNo jobs collected — nothing to save.") 
-        # sumayah 
+        print("\nNo jobs collected — nothing to save.")
