@@ -5,6 +5,10 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# DBT
+dbt_packages/
+logs/
+.venv/
 # C extensions
 *.so
 

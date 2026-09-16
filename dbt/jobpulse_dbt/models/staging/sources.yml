@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: jobpulse
+    database: jobpulse_db
+    schema: raw
+    tables:
+      - name: jobs_raw
+      

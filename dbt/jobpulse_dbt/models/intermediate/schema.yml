@@ -1,0 +1,114 @@
+version: 2
+
+models:
+  - name: stg_jobs
+    description: "Technical cleaning of raw job data: renaming, deduplication, null handling, and unifying city/name spellings (e.g. Jeddah/Jiddah). No business logic or interpretation happens here."
+    columns:
+      - name: source_job_id
+        tests:
+          - not_null
+
+  - name: int_jobs_city_deduped
+    description: "Removes technical duplicates using (source_job_id, job_url) and resolves Sabbar's city from the job URL when the city field itself is unreliable."
+    tests:
+      - not_null:
+          column_name: source_job_id
+
+  - name: int_jobs_location
+    description: "Normalizes city/region/country names using a seed mapping table with a fallback for unmapped values."
+    columns:
+      - name: normalized_city_name
+        tests:
+          - not_null:
+              config:
+                severity: warn
+
+      - name: normalized_country_name
+        tests:
+          - not_null
+
+  - name: int_jobs_country
+    description: "Filters jobs to Saudi Arabia only, based on normalized_country_name."
+    columns:
+      - name: normalized_country_name
+        tests:
+          - accepted_values:
+              values:
+                - Saudi Arabia
+
+  - name: int_jobs_dates
+    description: "Converts relative date text (e.g. '3 days ago', 'yesterday') into an actual date, based on collected_at."
+    columns:
+      - name: normalized_job_posted_date
+        tests:
+          - not_null
+
+  - name: int_jobs_attributes
+    description: "Normalizes workplace_type, employment_type, job_status, and job_source_channel (Direct / Aggregated via Tanqeeb / Aggregated via Sabbar)."
+    columns:
+      - name: normalized_job_status
+        tests:
+          - not_null
+      - name: job_source_channel
+        tests:
+          - accepted_values:
+              values:
+                - Direct
+                - Aggregated via Tanqeeb
+                - Aggregated via Sabbar
+
+  - name: int_jobs_experience
+    description: "Parses experience_years text into experience_min/max_years (numeric, never backfilled) and derives seniority_level from range-based thresholds."
+    columns:
+      - name: seniority_level
+        tests:
+          - accepted_values:
+              values:
+                - "Entry-level"
+                - "Associate / Mid-level"
+                - "Senior-level"
+                - "Executive / Director"
+                - "Not Specified"
+
+  - name: int_jobs_category
+    description: "Cleans raw job_category; falls back to job_title keyword matching when raw is empty. No exclusion filtering."
+    columns:
+      - name: source_job_id
+        tests:
+          - not_null
+
+  - name: int_jobs_industry
+    description: "Explicitly labels missing company industry ('Not Specified') and flags coverage via has_industry_data. Missing values are a structural gap from certain scraping sources, confirmed via source breakdown."
+    columns:
+      - name: company_industry_clean
+        tests:
+          - not_null
+
+  - name: int_jobs_company
+    description: "Nulls out company_url for Gulftalent (scraper bug: contains company name, not a URL) and flags validity via has_valid_company_url. Pending source re-scrape."
+    columns:
+      - name: has_valid_company_url
+        tests:
+          - not_null
+
+  - name: int_jobs_cleaned
+    description: "Final cleaned job dataset for downstream marts."
+    columns:
+      - name: source_job_id
+        tests:
+          - not_null
+      - name: job_source_channel
+        tests:
+          - accepted_values:
+              values:
+                - Direct
+                - Aggregated via Tanqeeb
+                - Aggregated via Sabbar
+
+  - name: int_jobs_final
+    description: "Adds a stable surrogate key (job_key, built from source_job_id + normalized_job_source + job_url) and applies incremental loading. Entry point for marts."
+    columns:
+      - name: job_key
+        tests:
+          - not_null
+          - unique

@@ -1,0 +1,258 @@
+﻿raw_value_normalized,mapped_city,mapped_region,row_count_in_sample,notes
+RIYADH,Riyadh,Riyadh Province,7624,
+JEDDAH,Jeddah,Makkah Al-Mukarramah Province,4359,
+SAUDI,,,2418,قيمة افتراضية غير مفيدة - null
+SAUDI ARABIA,,,2198,قيمة افتراضية غير مفيدة - null
+MAKKAH,Makkah,Makkah Al-Mukarramah Province,1491,
+DAMMAM,Dammam,Eastern Province,544,
+AR RIYADH,Riyadh,Riyadh Province,486,بادئة 'Ar ' مو مغطاة بقواعد initcap الحالية
+AL KHOBAR,Al-Khobar,Eastern Province,401,
+MECCA,Makkah,Makkah Al-Mukarramah Province,294,
+EASTERN PROVINCE,,Eastern Province,272,قيمة منطقة تسربت لعمود المدينة - المدينة null، المنطقة Eastern Province
+EASTERN,,Eastern Province,266,قيمة منطقة تسربت لعمود المدينة
+AL DAMAM,Dammam,Eastern Province,240,
+TABUK,Tabuk,Tabuk Province,223,
+DHAHRAN,Dhahran,Eastern Province,206,
+MADINAH,Al-Madinah,Al-Madinah Al-Munawwarah Province,205,
+AL JUBAIL,Al-Jubail,Eastern Province,193,
+JUBAIL,Al-Jubail,Eastern Province,155,
+HAIL,Hail,Hail Province,154,
+KHOBAR,Al-Khobar,Eastern Province,136,
+MEDINA,Al-Madinah,Al-Madinah Al-Munawwarah Province,113,
+BURAYDAH,Buraydah,Qassim Province,108,
+TAIF,Taif,Makkah Al-Mukarramah Province,98,
+JAZAN,Jazan,Jazan Province,97,
+ABHA,Abha,Aseer Province,91,
+AL HAFUF,Al-Hufuf,Eastern Province,87,
+NAJRAN,Najran,Najran Province,81,
+AD DAMMAM,Dammam,Eastern Province,77,
+KHAMIS MUSHAYT,Khamis Mushayt,Aseer Province,73,
+AL OLAYA - RIYADH,Riyadh,Riyadh Province,70,حي العليا - جزء من الرياض
+MAKKAH AL MUKARRAMAH,Makkah,Makkah Al-Mukarramah Province,68,
+UMLUJ,Umluj,Tabuk Province,66,
+YANBU,Yanbu,Al-Madinah Al-Munawwarah Province,62,
+AL-KHARJ,Al-Kharj,Riyadh Province,58,
+SAKAKA,Sakaka,Al-Jawf Province,58,
+AL BAHA,Al-Baha,Al-Bahah Province,50,
+AL MADINAH AL MUNAWARAH,Al-Madinah,Al-Madinah Al-Munawwarah Province,50,
+HAFAR AL BATIN,Hafr Al-Batin,Eastern Province,49,
+GHARB AL DHAHRAN - DHAHRAN,Dhahran,Eastern Province,47,حي غرب الظهران - جزء من الظهران
+ABA ASLAB,Aba Aslab,Riyadh Province,44,
+AL-AHSA,Al-Ahsa,Eastern Province,41,محافظة الأحساء (تضم الهفوف والمبرز) - تختلف عن مدينة الهفوف نفسها
+AL AHSA,Al-Ahsa,Eastern Province,37,
+NIFI,,,37,مراجعة يدوية - غير معروف
+AL ULA,Al-Ula,Al-Madinah Al-Munawwarah Province,36,
+ARAR,Ar'ar,Northern Borders Province,35,
+AL QATIF,Qatif,Eastern Province,34,
+JIZAN,Jazan,Jazan Province,31,
+AL MUBARRAZ,Al-Mubarraz,Eastern Province,28,
+AL MADINAH,Al-Madinah,Al-Madinah Al-Munawwarah Province,27,
+KING ABDULLAH ECONOMIC CITY,King Abdullah Economic City,Makkah Al-Mukarramah Province,27,قرب رابغ
+RAS TANNURAH,Ras Tanura,Eastern Province,25,
+AD DIRIYAH,Ad-Diriyah,Riyadh Province,24,
+KHAMIS MUSHAIT,Khamis Mushayt,Aseer Province,23,
+BUQAYQ,Buqayq,Eastern Province,23,
+AL WAJH,Al-Wajh,Tabuk Province,21,
+DUBA,Duba,Tabuk Province,20,
+RABIGH,Rabigh,Makkah Al-Mukarramah Province,20,
+AL KHAFJI,Al-Khafji,Eastern Province,19,
+ASIR,,Aseer Province,19,اسم المنطقة (Asir/'Asir) استُخدم كمدينة - يحتاج تحديد المدينة الفعلية
+AL QASSIM,,Qassim Province,18,اسم المنطقة نفسها استُخدم كمدينة - غير محدد أي مدينة بالضبط
+AL QUNFIDHAH,Al-Qunfidhah,Makkah Al-Mukarramah Province,18,
+BAHAH,Al-Baha,Al-Bahah Province,17,
+AL KHARJ,Al-Kharj,Riyadh Province,17,
+QIBAH,Qibah,Al-Bahah Province,16,
+SAYHAT,Sayhat,Eastern Province,16,
+UNAYZAH,Unayzah,Qassim Province,15,
+AL QUNFIDAH,Al-Qunfidhah,Makkah Al-Mukarramah Province,13,
+AL AQIQ,Al-Aqiq,Al-Bahah Province,12,
+AL BUKAYRIYAH,Al-Bukayriyah,Qassim Province,12,
+AL QURAYYAT,Al-Qurayyat,Al-Jawf Province,12,
+AT TAIF,Taif,Makkah Al-Mukarramah Province,12,
+AD DUWADIMI,Ad-Duwadimi,Qassim Province,12,الدوادمي، إداريًا تتبع الرياض غالبًا - يحتاج مراجعة
+AL JUMUM,Al-Jumum,Makkah Al-Mukarramah Province,12,
+QATIF,Qatif,Eastern Province,12,
+NAGRAN,Najran,Najran Province,12,
+AL HUFUF,Al-Hufuf,Eastern Province,11,
+ABU ARISH,Abu Arish,Jazan Province,11,
+QARYAT AL ULYA,Qaryat Al Ulya,,11,مراجعة يدوية - fallback تلقائي، لم يُراجع
+NEOM,Neom,Tabuk Province,10,
+HAFAR AL,Hafr Al-Batin,Eastern Province,10,قيمة مقطوعة من المصدر (truncated)
+KANSAS,,,9,مدينة أمريكية - بيانات خاطئة/تسرب من مصدر آخر
+ABRAQIYAH,Abraqiyah,Eastern Province,9,
+YANBU AS,Yanbu,Al-Madinah Al-Munawwarah Province,9,
+AD DILAM,Ad-Dilam,Riyadh Province,9,
+ABA AL QI,Aba Al-Qi,Tabuk Province,8,مراجعة - قيمة تبدو مقطوعة
+INAK,,,8,مراجعة يدوية - غير معروف
+AN NAFAL - RIYADH,Riyadh,Riyadh Province,7,حي النفل - جزء من الرياض
+MUHAYIL,Muhayil,Aseer Province,7,
+AL UYUN,Al-Uyun,Eastern Province,7,
+ABA AL BA,Aba Al-Ba,Al-Madinah Al-Munawwarah Province,7,مراجعة - القيمة تبدو مقطوعة من المصدر
+MALHAM,Malham,Riyadh Province,6,
+DURUMA,,,6,مراجعة يدوية - غير معروف
+SARAT ABIDAH,Sarat Abidah,Aseer Province,6,
+AL BADAI,Al-Badai,Qassim Province,6,
+AL HINAKIYAH,Al-Hinakiyah,Al-Madinah Al-Munawwarah Province,6,
+GHITHAH,Ghithah,Makkah Al-Mukarramah Province,6,
+ABRAQ AN,Abraq an-Niyaq,Aseer Province,5,مراجعة - قيمة تبدو مقطوعة
+HARD,,,5,مراجعة يدوية - قد تكون قيمة مقطوعة
+HAQL,Haql,Tabuk Province,5,
+AL JUBAYL,Al-Jubail,Eastern Province,5,
+AL LITH,Al-Lith,Makkah Al-Mukarramah Province,5,
+"SHURA ISLAND, UMLUJ",Umluj,Tabuk Province,5,جزيرة شورى - جزء من مشروع أملا قرب أملج
+AHAD AL MUSARIHAH,Ahad Al-Musarihah,Jazan Province,5,
+AR RASS,Ar-Rass,Qassim Province,5,
+AL QASIM,,Qassim Province,5,اسم المنطقة نفسها استُخدم كمدينة
+RAFHA,Rafha,Northern Borders Province,4,
+QILWAH,Qilwah,Al-Bahah Province,4,
+AL UMRAN,Al Umran,,4,مراجعة يدوية - fallback تلقائي، لم يُراجع
+HAWTAT BANI TAMIM,Hawtat Bani Tamim,Riyadh Province,4,
+SAMTAH,Samtah,Jazan Province,4,
+SAFWA,Safwa,Eastern Province,4,
+AL MUKHWAH,Al-Mukhwah,Al-Bahah Province,4,
+DARIN,Darin,Eastern Province,4,
+AL QAWZ,Al-Qawz,Makkah Al-Mukarramah Province,4,
+AL MAJMAAH,Al-Majmaah,Qassim Province,4,
+DAWMAT AL JANDAL,Dawmat Al-Jandal,Al-Jawf Province,4,
+BORAIDA,Buraydah,Qassim Province,4,
+ATH THUQB,Ath-Thuqbah,Eastern Province,4,
+YANBU AL,Yanbu,Al-Madinah Al-Munawwarah Province,4,
+BILJURASHI,Baljurashi,Al-Bahah Province,4,
+SAUDI ARABIA-JEDDAH,Jeddah,Makkah Al-Mukarramah Province,4,
+AFIF,Afif,Riyadh Province,4,
+&AMP;#1602;&AMP;#1585;&AMP;#1591;&AMP;#1576;&AMP;#1577; - &AMP;#1575;&AMP;#1604;&AMP;#1585;&AMP;#1610;&AMP;#1575;&AMP;#1590;,,,4,HTML entities تالفة - يطابقها الفلتر الحالي في city لكن سطر تأكيد بالـ seed أيضًا
+BISHA,Bisha,Aseer Province,3,
+AN NUAYRIYAH,An-Nuayriyah,Eastern Province,3,
+GEZAN,Jazan,Jazan Province,3,
+TABOUK,Tabuk,Tabuk Province,3,
+TABOK,Tabuk,Tabuk Province,3,
+TANUMAH,Tanumah,Aseer Province,3,
+AZ ZULFI,Az-Zulfi,Qassim Province,3,
+QASSIM,,Qassim Province,3,اسم المنطقة نفسها استُخدم كمدينة
+SABYA,Sabya,Jazan Province,3,
+NUMARAH,Numarah,Makkah Al-Mukarramah Province,3,
+HAWTAT SUDAIR,Hawtat Sudair,Riyadh Province,3,
+HA'IL,Hail,Hail Province,3,
+AL MIDHNAB,Al-Midhnab,Qassim Province,3,
+ASH SHAMLI,Ash-Shamli,Jazan Province,3,
+AL HARAJAH,Al Harajah,,3,مراجعة يدوية - fallback تلقائي، لم يُراجع
+AL HAWIYAH,Al-Hawiyah,Makkah Al-Mukarramah Province,3,
+AL HOFUF,Al-Hufuf,Eastern Province,3,
+AL HALQAH,Al-Halqah,Makkah Al-Mukarramah Province,3,
+AS SALAMAH,As-Salamah,Makkah Al-Mukarramah Province,3,
+BAYDAH,Baydah,Al-Bahah Province,2,
+ABQAIQ,Buqayq,Eastern Province,2,تهجئة أخرى
+ABA AL KI,Aba Al-Ki,Riyadh Province,2,مراجعة - القيمة تبدو مقطوعة من المصدر
+HURAYMILA,Huraymila,Riyadh Province,2,
+AL MUZAHIMIYAH,Al-Muzahimiyah,Riyadh Province,2,
+AL MUZAHIYAH,Al-Muzahimiyah,Riyadh Province,2,تهجئة مختصرة لنفس المدينة
+HAFAR AL-BATIN,Hafr Al-Batin,Eastern Province,2,
+DHAHRAN AL JANUB,Dhahran Al-Janub,Jazan Province,2,
+BADR,Badr,Al-Madinah Al-Munawwarah Province,2,بدر، المدينة المنورة - غالبًا
+AL-HAFOF,Al-Hufuf,Eastern Province,2,
+AMAALA,Amaala,Tabuk Province,2,
+ABU MARAG,Abu Marag,Makkah Al-Mukarramah Province,2,
+THAR,Thar,Riyadh Province,2,مراجعة - قرية صغيرة، افترضنا الرياض
+UMM TALHA,Umm Talha,Riyadh Province,2,
+WADI AD DAWASIR,Wadi Ad-Dawasir,Riyadh Province,2,
+UQLAT AS SUQUR,Uqlat As-Suqur,Qassim Province,2,
+SHAQRA,Shaqra,Riyadh Province,2,
+AL 'AMMAR,Al-Ammar,Aseer Province,2,
+AHAD RIFAYDAH,Ahad Rafidah,Aseer Province,2,
+AL 'AZIZI,Al-Azizi,Eastern Province,2,
+WESTERN PROVINCE,,Makkah Al-Mukarramah Province,2,قيمة منطقة تسربت لعمود المدينة (تقابل منطقة مكة تقريبًا)
+AL 'UFAYR,Al-Ufayr,Makkah Al-Mukarramah Province,2,
+MISSOURI,,,2,ولاية أمريكية - بيانات خاطئة/تسرب من مصدر آخر
+SALWA,Salwa,Eastern Province,2,
+KHULAYS,Khulays,Makkah Al-Mukarramah Province,2,
+AN NAMAS,An-Namas,Aseer Province,2,
+AR'AR,Ar'ar,Northern Borders Province,2,
+AL-MOTHNEB,Al-Midhnab,Qassim Province,2,تهجئة أخرى للمذنب
+"JAYASOM, AMAALA",Amaala,Tabuk Province,2,
+AL HAIR,Al-Hair,Riyadh Province,2,حي بالرياض
+ABU KABIR,Abu Kabir,Al-Madinah Al-Munawwarah Province,1,
+ABA AR RA,Aba Ar-Ra,Najran Province,1,مراجعة - قيمة تبدو مقطوعة
+ABA AL HIL,Aba Al-Hil,Hail Province,1,مراجعة - قيمة تبدو مقطوعة
+ABU AS SADAH,Abu As-Sadah,Jazan Province,1,
+ABAR AL MASHAYAH,Abar Al-Mashayah,Al-Madinah Al-Munawwarah Province,1,
+AHAD RIFAIDAH,Ahad Rafidah,Aseer Province,1,
+AL WATAH,Al-Watah,Makkah Al-Mukarramah Province,1,
+ḐURMA,Dhurma,Riyadh Province,1,
+TURAIF,Turaif,Northern Borders Province,1,
+TUMAIR,Tumair,Riyadh Province,1,
+SHIBRIQAH,Shibriqah,Al-Bahah Province,1,
+SUWAYR,,,1,مراجعة يدوية - غير معروف
+TUBARJAL,Tabarjal,Al-Jawf Province,1,
+ABU TARFAH,Abu Tarfah,Makkah Al-Mukarramah Province,1,
+AHAD AL-MASAREHA,Ahad Al-Musarihah,Jazan Province,1,تهجئة أخرى
+SHARURAH,Sharurah,Najran Province,1,
+SAUDI ARABIA - TAIF,Taif,Makkah Al-Mukarramah Province,1,
+SAUDI ARABIA - JEDDAH,Jeddah,Makkah Al-Mukarramah Province,1,
+AL 'AQUL,Al-Aqul,Al-Madinah Al-Munawwarah Province,1,
+"SAUDI ARABIAUNITED ARAB EMIRATES - SAUDI ARABIA , SAUDI ARABIAUNITED ARAB EMIRATES",,,1,بيانات تالفة/مدمجة من عدة قيم
+AD DIR'IY,Ad-Diriyah,Riyadh Province,1,تهجئة أخرى للدرعية
+AD DALFA,Ad Dalfa,,1,مراجعة يدوية - fallback تلقائي، لم يُراجع
+AL ARDHIYAH AL SHIMALIYAH,Al-Ardhiyah Ash-Shamaliyah,Jazan Province,1,
+AN NAQ'A,An-Naqa,Najran Province,1,
+ALUL,Al-Ula,Al-Madinah Al-Munawwarah Province,1,تهجئة مختصرة
+AL-QARYAT,Al-Qurayyat,Al-Jawf Province,1,تهجئة أخرى
+AL-KHADRAA,,,1,مراجعة يدوية - غير معروف
+AL-KHAFGY,Al-Khafji,Eastern Province,1,
+AL-KHOBAR,Al-Khobar,Eastern Province,1,
+AN NADHIM,An-Nadhim,Riyadh Province,1,
+AL-DALM,Ad-Dilam,Riyadh Province,1,تهجئة أخرى للدلم
+AL-DARB,Al-Darb,Jazan Province,1,
+"CAIRO - EGYPT , EGYPTSAUDI ARABIAUNITED ARAB EMIRATES - SAUDI ARABIA , DUBAI",,,1,بيانات تالفة/مدمجة من عدة قيم - تحتاج معالجة بالمصدر مو بالتطبيع
+CAIRO,,,1,مدينة مصرية - مو ضمن نطاق السعودية، يحتاج مراجعة قواعد الفلترة بالمصدر
+CENTRAL PROVINCE,,Riyadh Province,1,قيمة منطقة تسربت لعمود المدينة (تقابل منطقة الرياض تقريبًا)
+DHAHRAN/ AL-KHOBAR (HUB-BASED WITH REGIONAL COVERAGE),Al-Khobar,Eastern Province,1,نص وصفي وليس اسم مدينة صريح
+DOMIAT,,,1,دمياط، مصر - تسرب بيانات من نطاق آخر
+AL-LITH,Al-Lith,Makkah Al-Mukarramah Province,1,
+BANI SAR,Bani Sar,Al-Bahah Province,1,
+BAQIQ,Buqayq,Eastern Province,1,تهجئة أخرى
+BAQA,,,1,مراجعة يدوية - غير معروف
+BISHAH,Bisha,Aseer Province,1,
+BILLAHMAR,,,1,مراجعة يدوية - غير معروف
+AL 'AYDAB,Al-Aydab,Jazan Province,1,
+AL MAHALAH,Al-Mahalah,Aseer Province,1,
+ATH THUMAMAH,Ath-Thumamah,Riyadh Province,1,منطقة شمال الرياض
+AL QAYSUMAH,Al-Qaysumah,Eastern Province,1,
+AL QARI,Al-Qari,Al-Bahah Province,1,
+AL QALT,Al-Qalt,Eastern Province,1,
+AL KHURMAH,Al-Khurmah,Makkah Al-Mukarramah Province,1,
+AL KHURMA,Al-Khurmah,Makkah Al-Mukarramah Province,1,
+AS SULIMANIYAH - RIYADH,Riyadh,Riyadh Province,1,حي السليمانية - جزء من الرياض
+AS SAFRA,As-Safra,Qassim Province,1,
+AS SAFFAN,As-Saffan,Eastern Province,1,
+AL HIFAH,Al-Hifah,Aseer Province,1,
+MAHD ADH DHAHAB,Mahd Adh-Dhahab,Al-Madinah Al-Munawwarah Province,1,
+JOUF,Al-Jawf,Al-Jawf Province,1,
+JU'RANAH,Juranah,Makkah Al-Mukarramah Province,1,
+IBN SUQI,Ibn Suqi,Northern Borders Province,1,
+AL SHUQAYQ,Ash-Shuqayq,Jazan Province,1,
+AL QUZ,Al-Quz,Aseer Province,1,
+HAFIRAT NAZIM,Hafirat Nazim,Riyadh Province,1,
+"GOLD REGION, APPROXIMATELY 200 KM NORTH-EAST OF TAIF TOWARDS RIYADH",,Makkah Al-Mukarramah Province,1,وصف موقع مو اسم مدينة - يحتاج مراجعة يدوية
+AL KHABRA,Al Khabra,,1,مراجعة يدوية - fallback تلقائي، لم يُراجع
+AL BIDI'A,Al-Bidiah,Riyadh Province,1,حي بالرياض
+AL BIYAD,Al-Biyad,Riyadh Province,1,حي بالرياض
+AL HADA,Al-Hada,Makkah Al-Mukarramah Province,1,بين مكة والطائف - أقرب لمكة
+AL ARIDAH,Al-Aridah,Jazan Province,1,
+AL ASYAH,Al-Asyah,Qassim Province,1,
+AL ARTAWIYAH,Al-Artawiyah,Riyadh Province,1,
+NARIYAH,Nariyah,Eastern Province,1,
+AL HAZM,Al-Hazm,Qassim Province,1,
+AL HAFAIR,Al-Hafair,Makkah Al-Mukarramah Province,1,
+AL ATAWLAH,Al-Atawlah,Al-Bahah Province,1,
+AL BATALI,Al-Batali,Eastern Province,1,
+AL JURF,Al-Jurf,Al-Madinah Al-Munawwarah Province,1,
+MARAT,Marat,Riyadh Province,1,
+AL JAWF,Al-Jawf,Al-Jawf Province,1,
+RUMAH,Rumah,Riyadh Province,1,
+NORTHERN BORDERS,,Northern Borders Province,1,قيمة منطقة تسربت لعمود المدينة
+RAHFAA,,,1,مراجعة يدوية - غير معروف
+RAHIMAH,Rahimah,Eastern Province,1,
+SABT AL ALAYAH,Sabt Al-Alaya,Aseer Province,1,
+RIYAD AL KHABRA,Riyadh Al-Khabra,Qassim Province,1,
+ALJUBAIL,Al-Jubail,Eastern Province,0,مستخرجة من رابط sabbar.com - بدون شرطة فاصلة
+TAYMA,Tayma,Al-Madinah Al-Munawwarah Province,0,مستخرجة من رابط sabbar.com
