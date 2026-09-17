@@ -1,4 +1,3 @@
--- models/intermediate/int_jobs_location.sql
 -- Normalize city, region, and country using the mapping seed plus fallback rules.
 
 with source as (

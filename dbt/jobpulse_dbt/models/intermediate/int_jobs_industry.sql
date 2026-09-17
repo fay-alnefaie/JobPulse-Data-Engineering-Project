@@ -1,4 +1,3 @@
--- models/intermediate/int_jobs_industry.sql
 -- Business/data interpretation:
 -- ~58% of rows have industry = NULL. Source breakdown confirmed this is a
 -- structural gap (some scraping sources never expose industry), not random

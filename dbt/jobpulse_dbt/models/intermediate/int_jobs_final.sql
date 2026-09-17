@@ -1,4 +1,3 @@
--- models/intermediate/int_jobs_final.sql
 -- Surrogate key generation + incremental load logic.
 -- Entry point for downstream marts (fact/dimension models).
 -- Requires dbt_utils package (see packages.yml).

@@ -1,4 +1,3 @@
--- models/intermediate/int_jobs_dates.sql
 -- Interpret relative and explicit job-posted dates.
 
 with source as (

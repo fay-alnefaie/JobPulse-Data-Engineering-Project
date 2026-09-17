@@ -1,4 +1,3 @@
--- models/intermediate/int_jobs_experience.sql
 -- Interpret experience text as min/max years.
 -- Date-like values such as 02/05/2026 are rejected as experience data.
 with

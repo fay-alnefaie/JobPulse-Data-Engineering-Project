@@ -1,4 +1,3 @@
--- models/intermediate/int_jobs_city_deduped.sql
 -- Business/data interpretation:
 -- 1. Resolve Sabbar city from the URL when available.
 -- 2. Deduplicate using (source_job_id, job_url).

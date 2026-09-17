@@ -1,4 +1,3 @@
--- models/intermediate/int_jobs_country.sql
 -- Business/data interpretation:
 -- Keep Saudi Arabia jobs only. Runs right after location normalization
 -- because it depends on normalized_country_name.
