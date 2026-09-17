@@ -1,4 +1,3 @@
--- models/marts/int_jobs_cleaned.sql
 -- Final cleaned dataset used by downstream dimensions/facts.
 -- Keep this model if the existing marts currently expect one wide cleaned table.
 select
