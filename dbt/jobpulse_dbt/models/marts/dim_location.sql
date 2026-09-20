@@ -9,12 +9,10 @@ with locations as (
             'normalized_country_name'
         ]) }} as location_key,
 
-        city,
-        normalized_city_name,
-        region,
-        normalized_region_name,
-        country,
-        normalized_country_name,
+    
+        normalized_city_name as city,
+        normalized_region_name as region,
+        normalized_country_name as country,
 
         row_number() over (
             partition by
