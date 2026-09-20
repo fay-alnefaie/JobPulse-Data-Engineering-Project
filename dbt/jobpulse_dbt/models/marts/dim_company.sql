@@ -1,4 +1,4 @@
-{{ config(materialized="table") }}
+-- {{ config(materialized="table") }}
 
 with companies as (
 
@@ -9,16 +9,13 @@ with companies as (
         ]) }} as company_key,
 
         company_name,
-        company_url,
-        company_url_clean,
-        company_industry as industry,
-        company_industry_clean as industry_clean,
-        has_valid_company_url,
+        company_url_clean as company_url,
+        company_industry_clean as company_industry,
 
         row_number() over (
             partition by
                 company_name,
-                company_url_clean
+                company_url
             order by
                 company_name
         ) as rn
@@ -31,10 +28,7 @@ select
     company_key,
     company_name,
     company_url,
-    company_url_clean,
-    industry,
-    industry_clean,
-    has_valid_company_url
+    company_industry,
 
 from companies
 where rn = 1
