@@ -11,4 +11,3 @@ select distinct
 
 from {{ ref('int_jobs_final') }}
 
-where normalized_job_source is not null
