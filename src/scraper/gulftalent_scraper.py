@@ -8,6 +8,7 @@ import html
 import json
 import re
 import time
+import unicodedata
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
@@ -85,15 +86,31 @@ def nested(data: dict, *keys: str) -> str:
     return "" if current is None else str(current)
 
 
+def normalize_company_url(company_name: str, raw_value: str) -> str:
+    """Return a valid GulfTalent company URL when JSON-LD contains a name."""
+    raw_value = (raw_value or "").strip()
+    if re.match(r"^https?://", raw_value, flags=re.IGNORECASE):
+        return raw_value
+
+    decoded_name = html.unescape(company_name or "")
+    ascii_name = unicodedata.normalize("NFKD", decoded_name).encode(
+        "ascii", "ignore"
+    ).decode("ascii")
+    slug = re.sub(r"[^a-z0-9]+", "-", ascii_name.lower()).strip("-")
+    return f"{BASE_URL}/companies/{slug}-careers" if slug else ""
+
+
 def normalize_job(data: dict, url: str) -> dict:
     employment = data.get("employmentType", "")
     if isinstance(employment, list):
         employment = ",".join(map(str, employment))
     scrape_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     valid_through = data.get("validThrough", "")
-    company_url = nested(data, "hiringOrganization", "sameAs") or nested(
+    company_name = nested(data, "hiringOrganization", "name")
+    raw_company_url = nested(data, "hiringOrganization", "sameAs") or nested(
         data, "hiringOrganization", "url"
     )
+    company_url = normalize_company_url(company_name, raw_company_url)
     workplace_raw = str(data.get("jobLocationType", "")).upper()
     workplace_type = "Remote" if "TELECOMMUTE" in workplace_raw else ""
     salary = data.get("baseSalary")
@@ -111,7 +128,7 @@ def normalize_job(data: dict, url: str) -> dict:
         "source_job_id": nested(data, "identifier", "value"),
         "job_title": data.get("title", ""),
         "url": url,
-        "company_name": nested(data, "hiringOrganization", "name"),
+        "company_name": company_name,
         "company_url": company_url,
         "city": nested(data, "jobLocation", "address", "addressLocality"),
         "region": nested(data, "jobLocation", "address", "addressRegion"),
