@@ -3,7 +3,7 @@
 select distinct
     job_key,
     source_job_id,
-    original_job_title as job_title, 
+    job_title, 
     normalized_job_category as job_category,
     normalized_job_status as job_status,
     seniority_level 

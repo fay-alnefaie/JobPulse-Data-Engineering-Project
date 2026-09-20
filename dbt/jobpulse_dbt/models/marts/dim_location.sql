@@ -1,4 +1,4 @@
-{{ config(materialized="table") }}
+-- {{ config(materialized="table") }}
 
 with locations as (
 
@@ -30,11 +30,8 @@ with locations as (
 select
     location_key,
     city,
-    normalized_city_name,
     region,
-    normalized_region_name,
-    country,
-    normalized_country_name
+    country
 
 from locations
 where rn = 1
