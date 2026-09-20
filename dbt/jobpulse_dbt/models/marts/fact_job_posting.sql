@@ -1,4 +1,4 @@
-{{ config(materialized="table") }}
+-- {{ config(materialized="table") }}
 
 with jobs as (
 
@@ -19,7 +19,7 @@ with jobs as (
         job_url,
         description,
         experience_min_years,
-        experience_max_years,
+        experience_max_years
         experience_is_open_ended,
         collected_at
 
@@ -42,7 +42,7 @@ select
 
     {{ dbt_utils.generate_surrogate_key([
         'company_name',
-        'company_url_clean'
+        'company_url'
     ]) }} as company_key,
 
     {{ dbt_utils.generate_surrogate_key([
