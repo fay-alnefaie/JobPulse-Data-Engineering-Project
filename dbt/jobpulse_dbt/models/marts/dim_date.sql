@@ -1,4 +1,4 @@
-{{ config(materialized="table") }}
+-- {{ config(materialized="table") }}
 
 select distinct
     to_number(to_char(normalized_job_posted_date, 'YYYYMMDD')) as date_key,
