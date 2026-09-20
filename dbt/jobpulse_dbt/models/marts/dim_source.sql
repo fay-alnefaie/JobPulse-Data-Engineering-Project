@@ -5,9 +5,7 @@ select distinct
         'normalized_job_source',
         'job_source_channel'
     ]) }} as source_key,
-
-    normalized_job_source as source_name,
-    job_source_channel as source_channel
-
+    coalesce(normalized_job_source, 'Unknown') as source_name,
+    coalesce(job_source_channel, 'Unknown') as source_channel
 from {{ ref('int_jobs_final') }}
 

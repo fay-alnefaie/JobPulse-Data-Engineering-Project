@@ -1,96 +1,133 @@
-version: 2
-
-models:
-
-  - name: dim_job
-    columns:
-      - name: job_key
-        tests:
-          - not_null
-          - unique
-
-      - name: seniority_level
-        tests:
-          - not_null
-
-  - name: dim_company
-    columns:
-      - name: company_key
-        tests:
-          - not_null
-          - unique
-
-  - name: dim_location
-    columns:
-      - name: location_key
-        tests:
-          - not_null
-          - unique
-
-  - name: dim_source
-    columns:
-      - name: source_key
-        tests:
-          - not_null
-          - unique
-
-  - name: dim_employment_type
-    columns:
-      - name: employment_type_key
-        tests:
-          - not_null
-          - unique
-
-  - name: dim_date
-    columns:
-      - name: date_key
-        tests:
-          - not_null
-          - unique
-
-  - name: fact_job_posting
-    columns:
-      - name: job_posting_key
-        tests:
-          - not_null
-          - unique
-
-      - name: job_key
-        tests:
-          - not_null
-          - relationships:
-              to: ref('dim_job')
-              field: job_key
-
-      - name: company_key
-        tests:
-          - not_null
-          - relationships:
-              to: ref('dim_company')
-              field: company_key
-
-      - name: location_key
-        tests:
-          - not_null
-          - relationships:
-              to: ref('dim_location')
-              field: location_key
-
-      - name: source_key
-        tests:
-          - not_null
-          - relationships:
-              to: ref('dim_source')
-              field: source_key
-
-      - name: employment_type_key
-        tests:
-          - relationships:
-              to: ref('dim_employment_type')
-              field: employment_type_key
-
-      - name: job_posted_date_key
-        tests:
-          - relationships:
-              to: ref('dim_date')
+version: 2 
+ 
+models: 
+ 
+  - name: dim_job 
+    columns: 
+      - name: job_key 
+        tests: 
+          - not_null 
+          - unique 
+ 
+      - name: seniority_level 
+        tests: 
+          - not_null 
+ 
+  - name: dim_company 
+    columns: 
+      - name: company_key 
+        tests: 
+          - not_null 
+          - unique 
+ 
+  - name: dim_location 
+    columns: 
+      - name: location_key 
+        tests: 
+          - not_null 
+          - unique 
+ 
+  - name: dim_source 
+    columns: 
+      - name: source_key 
+        tests: 
+          - not_null 
+          - unique 
+ 
+  - name: dim_employment_type 
+    columns: 
+      - name: employment_type_key 
+        tests: 
+          - not_null 
+          - unique 
+ 
+  - name: dim_date 
+    columns: 
+      - name: date_key 
+        tests: 
+          - not_null 
+          - unique 
+ 
+  - name: fact_job_posting 
+    columns: 
+      - name: job_posting_key 
+        tests: 
+          - not_null 
+          - unique 
+ 
+      - name: job_key 
+        tests: 
+          - not_null 
+          - relationships: 
+              to: ref('dim_job') 
+              field: job_key 
+ 
+      - name: company_key 
+        tests: 
+          - not_null 
+          - relationships: 
+              to: ref('dim_company') 
+              field: company_key 
+ 
+      - name: location_key 
+        tests: 
+          - not_null 
+          - relationships: 
+              to: ref('dim_location') 
+              field: location_key 
+ 
+      - name: source_key 
+        tests: 
+          - not_null 
+          - relationships: 
+              to: ref('dim_source') 
+              field: source_key 
+ 
+      - name: employment_type_key 
+        tests: 
+          - relationships: 
+              to: ref('dim_employment_type') 
+              field: employment_type_key 
+ 
+      - name: job_posted_date_key 
+        tests: 
+          - relationships: 
+              to: ref('dim_date') 
               field: date_key
+
+
+  - name: dim_skills
+    description: "Dimension table containing unique extracted skills."
+    columns:
+      - name: skill_key
+        tests:
+          - not_null
+          - unique
+
+      - name: skill_name
+        tests:
+          - not_null
+
+      - name: skill_category
+        tests:
+          - not_null
+
+
+  - name: bridge_job_skills
+    description: "Bridge table connecting jobs with extracted skills."
+    columns:
+      - name: job_key
+        tests:
+          - not_null
+
+      - name: skill_key
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_skills')
+                field: skill_key
+
+      - name: confidence
+        tests:
+          - not_null
