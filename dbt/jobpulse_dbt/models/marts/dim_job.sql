@@ -8,5 +8,7 @@ select distinct
     normalized_job_status as job_status,
     seniority_level 
     
-from {{ ref('int_jobs_final') }}
+from {{ ref('snapshot_job_status') }}
+
 where job_key is not null
+  and dbt_valid_to is null
