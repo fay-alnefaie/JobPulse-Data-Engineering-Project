@@ -4,26 +4,25 @@
 -- missingness -- so we represent it explicitly rather than guessing a value.
 -- industry is categorical/text, so a text placeholder is safe here (unlike
 -- numeric columns such as experience_years, which are never backfilled).
+with
+    source as (select * from {{ ref("int_jobs_category_filtered") }}),
 
-with source as (
+    industry_handled as (
 
-    select *
-    from {{ ref('int_jobs_category') }}
+        select
+            *,
 
-),
+            coalesce(
+                nullif(trim(company_industry), ''), 'Not Specified'
+            ) as company_industry_clean,
 
-industry_handled as (
+            (
+                company_industry is not null and trim(company_industry) != ''
+            ) as has_company_industry_data
 
-    select
-        *,
+        from source
 
-        coalesce(nullif(trim(company_industry), ''), 'Not Specified') as company_industry_clean,
-
-        (company_industry is not null and trim(company_industry) != '') as has_company_industry_data
-
-    from source
-
-)
+    )
 
 select *
 from industry_handled
