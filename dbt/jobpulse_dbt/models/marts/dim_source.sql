@@ -8,7 +8,7 @@ select distinct
 
     coalesce(
         normalized_job_source,
-        'Unknown'
+        'Not Specified'
     ) as source_name,
 
     job_source_channel as source_channel
