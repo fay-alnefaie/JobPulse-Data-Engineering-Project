@@ -23,6 +23,24 @@ with
                     or job_title ilike '%information technology%'
                     or job_title ilike '%network%'
                     or job_title ilike '%system admin%'
+                    or job_title ilike '%cyber%'
+                    or job_title ilike '%cybersecurity%'
+                    or job_title ilike '%information security%'
+                    or job_title ilike '%infosec%'
+                    or job_title ilike '%soc analyst%'
+                    or job_title ilike '%security analyst%'
+                    or job_title ilike '%penetration test%'
+                    or job_title ilike '%pentest%'
+                    or job_title ilike '%siem%'
+                    or job_title ilike '%front end%'
+                    or job_title ilike '%front-end%'
+                    or job_title ilike '%frontend%'
+                    or job_title ilike '%back end%'
+                    or job_title ilike '%back-end%'
+                    or job_title ilike '%backend%'
+                    or job_title ilike '%full stack%'
+                    or job_title ilike '%full-stack%'
+                    or job_title ilike '%fullstack%'
                 then 'IT'
 
                 when
@@ -53,7 +71,10 @@ with
                     or job_title ilike '%accounting%'
                 then 'Finance'
 
-                when job_title ilike '%Analyst%'
+                when 
+                    job_title ilike '%Analyst%'
+                    or job_title ilike '%data analyst%'
+                    or job_title ilike '%business analyst%'
                 then 'Analyst'
 
                 when job_title ilike '%Receptionist%'
