@@ -23,7 +23,7 @@ with jobs as (
         experience_is_open_ended,
         collected_at
 
-    from {{ ref('int_jobs_final') }}
+    from {{ ref('int_jobs_preferred_source') }}
 
     where job_key is not null
 

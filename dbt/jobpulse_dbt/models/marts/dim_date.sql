@@ -10,6 +10,6 @@ select distinct
     day(normalized_job_posted_date) as day,
     dayofweek(normalized_job_posted_date) as day_of_week
 
-from {{ ref('int_jobs_final') }}
+from {{ ref('int_jobs_preferred_source') }}
 
 where normalized_job_posted_date is not null

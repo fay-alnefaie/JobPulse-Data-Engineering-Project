@@ -13,4 +13,4 @@ select distinct
 
     job_source_channel as source_channel
 
-from {{ ref('int_jobs_final') }}
+from {{ ref('int_jobs_preferred_source') }}

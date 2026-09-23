@@ -23,7 +23,7 @@ with locations as (
                 city
         ) as rn
 
-    from {{ ref('int_jobs_final') }}
+    from {{ ref('int_jobs_preferred_source') }}
 
 )
 

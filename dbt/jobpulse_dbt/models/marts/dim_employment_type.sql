@@ -7,6 +7,6 @@ select distinct
 
     normalized_employment_type as employment_type_name
 
-from {{ ref('int_jobs_final') }}
+from {{ ref('int_jobs_preferred_source') }}
 
 where normalized_employment_type is not null
