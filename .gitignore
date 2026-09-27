@@ -222,3 +222,33 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.venv/
+
+# --- Environment / secrets ---
+.env
+*.env
+profiles.yml
+
+# --- dbt ---
+dbt/jobpulse_dbt/target/
+dbt/jobpulse_dbt/logs/
+dbt/jobpulse_dbt/dbt_packages/
+
+# --- Airflow (local dev artifacts) ---
+airflow/logs/
+airflow/plugins/
+airflow/config/
+
+# --- Scraped data (large, regenerated, shouldn't live in git) ---
+data/raw_data/*.csv
+data/cleaned_data/*.csv
+
+# --- Docker ---
+*.pyc
+

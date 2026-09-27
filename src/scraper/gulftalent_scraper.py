@@ -6,6 +6,7 @@ import concurrent.futures
 import csv
 import html
 import json
+import os
 import re
 import time
 import unicodedata
@@ -224,7 +225,13 @@ def main() -> None:
     if not 1 <= args.max_pages <= 1000:
         parser.error("--max-pages must be between 1 and 1000")
     stamp = datetime.now().astimezone().strftime("%Y-%m-%d_%H-%M")
-    output = Path(args.output or f"{stamp}_gulftalent_jobs.csv")
+    # Same convention as sabbar_scraper.py / tanqeeb_scraper.py: honor
+    # OUTPUT_DIR so the file lands in the mounted volume that
+    # upload_to_blob.py reads from, instead of the container's own
+    # (ephemeral) working directory.
+    output_dir = Path(os.environ.get("OUTPUT_DIR", "."))
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output = Path(args.output) if args.output else output_dir / f"{stamp}_gulftalent_jobs.csv"
     rows, errors = collect(args.delay, args.start_page, args.max_pages, output)
     write_csv(rows, output)
     print(f"Saved {len(rows)} rows to {output}")

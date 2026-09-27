@@ -2,14 +2,10 @@ FROM python:3.12-slim
 
 WORKDIR /App
 
-ENV OUTPUT_DIR=/App/data/raw_data
-
 COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY extract_skills.py .
 
-VOLUME ["/App/data/raw_data"]
-
-CMD ["python", "tanqeeb_scraper.py"]
+CMD ["python", "extract_skills.py"]

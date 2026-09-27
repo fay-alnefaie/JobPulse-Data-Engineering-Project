@@ -911,7 +911,7 @@ cursor = connection.cursor()
 
 
 # =========================================================
-# Process jobs incrementally
+# Process jobs incrementally in batches
 # =========================================================
 
 try:
@@ -930,191 +930,296 @@ try:
 
     connection.commit()
 
-    cursor.execute(
-        f"""
-        WITH unique_jobs AS (
-            SELECT
-                job_key,
-                description
-            FROM JOBPULSE_DB.SILVER.INT_JOBS_FINAL
-            WHERE description IS NOT NULL
-              AND TRIM(description) <> ''
-
-            QUALIFY ROW_NUMBER() OVER (
-                PARTITION BY job_key
-                ORDER BY job_key
-            ) = 1
-        )
-
-        SELECT
-            jobs.job_key,
-            jobs.description
-        FROM unique_jobs AS jobs
-
-        WHERE NOT EXISTS (
-            SELECT 1
-            FROM JOBPULSE_DB.RAW.EXTRACTED_SKILLS
-                AS skills
-            WHERE skills.job_key = jobs.job_key
-        )
-
-        AND NOT EXISTS (
-            SELECT 1
-            FROM JOBPULSE_DB.RAW.SKILL_EXTRACTION_LOG
-                AS extraction_log
-            WHERE extraction_log.job_key =
-                  jobs.job_key
-
-              AND extraction_log.status IN (
-                  'skills_found',
-                  'no_skills_found'
-              )
-        )
-
-        ORDER BY jobs.job_key
-
-        LIMIT {NUMBER_OF_JOBS}
-        """
-    )
-
-    jobs = cursor.fetchall()
-
-    print(
-        f"\nLoaded {len(jobs)} jobs "
-        f"for processing.\n"
-    )
-
     total_inserted = 0
     total_errors = 0
+    total_processed = 0
+    batch_number = 0
 
-    for job_number, (
-        job_key,
-        description,
-    ) in enumerate(
-        jobs,
-        start=1,
-    ):
-        print(
-            f"Processing job "
-            f"{job_number}/{len(jobs)}: "
-            f"{job_key}"
+    # =====================================================
+    # Keep processing batches until no jobs remain
+    # =====================================================
+
+    while True:
+
+        batch_number += 1
+
+        cursor.execute(
+            f"""
+            WITH unique_jobs AS (
+                SELECT
+                    job_key,
+                    description
+                FROM JOBPULSE_DB.SILVER.INT_JOBS_FINAL
+                WHERE description IS NOT NULL
+                  AND TRIM(description) <> ''
+
+                QUALIFY ROW_NUMBER() OVER (
+                    PARTITION BY job_key
+                    ORDER BY job_key
+                ) = 1
+            )
+
+            SELECT
+                jobs.job_key,
+                jobs.description
+            FROM unique_jobs AS jobs
+
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM JOBPULSE_DB.RAW.EXTRACTED_SKILLS
+                    AS skills
+                WHERE skills.job_key = jobs.job_key
+            )
+
+            AND NOT EXISTS (
+                SELECT 1
+                FROM JOBPULSE_DB.RAW.SKILL_EXTRACTION_LOG
+                    AS extraction_log
+                WHERE extraction_log.job_key =
+                      jobs.job_key
+
+                  AND extraction_log.status IN (
+                      'skills_found',
+                      'no_skills_found'
+                  )
+            )
+
+            ORDER BY jobs.job_key
+
+            LIMIT {NUMBER_OF_JOBS}
+            """
         )
 
-        try:
-            skills = extract_skills(
-                description
+        jobs = cursor.fetchall()
+
+        # -------------------------------------------------
+        # Stop when there are no more unprocessed jobs
+        # -------------------------------------------------
+
+        if not jobs:
+            print(
+                "\n========================================"
             )
-
-            if skills:
-                rows_to_insert = [
-                    (
-                        job_key,
-                        skill["skill_name"],
-                        skill["skill_category"],
-                        skill["confidence"],
-                        skill["evidence_span"],
-                    )
-                    for skill in skills
-                ]
-
-                cursor.executemany(
-                    """
-                    INSERT INTO
-                    JOBPULSE_DB.RAW.EXTRACTED_SKILLS (
-                        job_key,
-                        skill_name,
-                        skill_category,
-                        confidence,
-                        evidence_span
-                    )
-                    VALUES (%s, %s, %s, %s, %s)
-                    """,
-                    rows_to_insert,
-                )
-
-                skill_count = len(
-                    rows_to_insert
-                )
-
-                status = "skills_found"
-
-                total_inserted += skill_count
-
-                print(
-                    f"Inserted "
-                    f"{skill_count} skills."
-                )
-
-            else:
-                skill_count = 0
-                status = "no_skills_found"
-
-                print(
-                    "No approved skills found."
-                )
-
-            cursor.execute(
-                """
-                INSERT INTO
-                JOBPULSE_DB.RAW.SKILL_EXTRACTION_LOG (
-                    job_key,
-                    skill_count,
-                    status
-                )
-                VALUES (%s, %s, %s)
-                """,
-                (
-                    job_key,
-                    skill_count,
-                    status,
-                ),
+            print(
+                "No more unprocessed jobs."
             )
+            print(
+                "All available jobs have been processed."
+            )
+            print(
+                "========================================\n"
+            )
+            break
 
-            # Save after every job
-            connection.commit()
+        print(
+            "\n========================================"
+        )
+        print(
+            f"Starting batch {batch_number}"
+        )
+        print(
+            f"Loaded {len(jobs)} jobs for processing."
+        )
+        print(
+            "========================================\n"
+        )
 
-        except Exception as job_error:
-            connection.rollback()
-            total_errors += 1
+        # -------------------------------------------------
+        # Process current batch
+        # -------------------------------------------------
+
+        for job_number, (
+            job_key,
+            description,
+        ) in enumerate(
+            jobs,
+            start=1,
+        ):
 
             print(
-                f"Skipped job because of error: "
-                f"{job_error}"
+                f"Processing job "
+                f"{job_number}/{len(jobs)}: "
+                f"{job_key}"
             )
 
-            cursor.execute(
-                """
-                INSERT INTO
-                JOBPULSE_DB.RAW.SKILL_EXTRACTION_LOG (
-                    job_key,
-                    skill_count,
-                    status
+            try:
+                skills = extract_skills(
+                    description
                 )
-                VALUES (%s, %s, %s)
-                """,
-                (
-                    job_key,
-                    0,
-                    "error",
-                ),
-            )
 
-            connection.commit()
-            continue
+                if skills:
 
-    print("\nFinished successfully.")
+                    rows_to_insert = [
+                        (
+                            job_key,
+                            skill["skill_name"],
+                            skill["skill_category"],
+                            skill["confidence"],
+                            skill["evidence_span"],
+                        )
+                        for skill in skills
+                    ]
+
+                    cursor.executemany(
+                        """
+                        INSERT INTO
+                        JOBPULSE_DB.RAW.EXTRACTED_SKILLS (
+                            job_key,
+                            skill_name,
+                            skill_category,
+                            confidence,
+                            evidence_span
+                        )
+                        VALUES (%s, %s, %s, %s, %s)
+                        """,
+                        rows_to_insert,
+                    )
+
+                    skill_count = len(
+                        rows_to_insert
+                    )
+
+                    status = "skills_found"
+
+                    total_inserted += skill_count
+
+                    print(
+                        f"Inserted "
+                        f"{skill_count} skills."
+                    )
+
+                else:
+                    skill_count = 0
+                    status = "no_skills_found"
+
+                    print(
+                        "No approved skills found."
+                    )
+
+                # -----------------------------------------
+                # Log successful processing
+                # -----------------------------------------
+
+                cursor.execute(
+                    """
+                    INSERT INTO
+                    JOBPULSE_DB.RAW.SKILL_EXTRACTION_LOG (
+                        job_key,
+                        skill_count,
+                        status
+                    )
+                    VALUES (%s, %s, %s)
+                    """,
+                    (
+                        job_key,
+                        skill_count,
+                        status,
+                    ),
+                )
+
+                # Save after every job
+                connection.commit()
+
+                total_processed += 1
+
+            except Exception as job_error:
+
+                connection.rollback()
+
+                total_errors += 1
+
+                print(
+                    f"Skipped job because of error: "
+                    f"{job_error}"
+                )
+
+                # -----------------------------------------
+                # Log failed job
+                #
+                # IMPORTANT:
+                # status = error means this job is NOT
+                # considered successfully processed.
+                # Therefore it can be retried in a future
+                # run.
+                # -----------------------------------------
+
+                cursor.execute(
+                    """
+                    INSERT INTO
+                    JOBPULSE_DB.RAW.SKILL_EXTRACTION_LOG (
+                        job_key,
+                        skill_count,
+                        status
+                    )
+                    VALUES (%s, %s, %s)
+                    """,
+                    (
+                        job_key,
+                        0,
+                        "error",
+                    ),
+                )
+
+                connection.commit()
+
+                continue
+
+        print(
+            "\n----------------------------------------"
+        )
+        print(
+            f"Batch {batch_number} completed."
+        )
+        print(
+            f"Jobs processed so far: "
+            f"{total_processed}"
+        )
+        print(
+            f"Total inserted skills: "
+            f"{total_inserted}"
+        )
+        print(
+            f"Total job errors: "
+            f"{total_errors}"
+        )
+        print(
+            "----------------------------------------\n"
+        )
+
+        # The while loop now starts another query.
+        # The next query will automatically exclude
+        # jobs already processed in this batch.
+
+
+    # =====================================================
+    # Final summary
+    # =====================================================
 
     print(
-        f"Total inserted skills: "
-        f"{total_inserted}"
+        "\n========================================"
+    )
+    print(
+        "Finished successfully."
+    )
+    print(
+        f"Total batches: {batch_number}"
+    )
+    print(
+        f"Total jobs processed: {total_processed}"
+    )
+    print(
+        f"Total inserted skills: {total_inserted}"
+    )
+    print(
+        f"Jobs skipped because of errors: {total_errors}"
+    )
+    print(
+        "========================================"
     )
 
-    print(
-        f"Jobs skipped because of errors: "
-        f"{total_errors}"
-    )
 
 except Exception as error:
+
     connection.rollback()
 
     print(
@@ -1124,5 +1229,7 @@ except Exception as error:
     raise
 
 finally:
+
     cursor.close()
     connection.close()
+
