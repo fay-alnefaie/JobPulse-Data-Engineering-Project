@@ -2,9 +2,9 @@
 
 ## Saudi Job Market Data Engineering Pipeline
 
-JobPulse is an end-to-end **data engineering project** that collects job listings from Saudi Arabian recruitment platforms, processes and standardizes the data, tracks job status changes, and delivers analytics through a Power BI dashboard.
+JobPulse is an end-to-end **data engineering project** that collects job listings from Saudi Arabian recruitment platforms, processes and standardizes the data, tracks job status changes, extracts job skills, and delivers analytics through a Power BI dashboard.
 
-The pipeline uses a **Medallion-style architecture** with Azure Blob Storage, Snowflake, dbt, and Apache Airflow.
+The pipeline follows a **Medallion-style architecture** using Azure Blob Storage, Snowflake, dbt, and Apache Airflow.
 
 ```text
 Job Platforms
@@ -23,18 +23,105 @@ Python Scrapers ──► Azure Blob Storage (Bronze)
                            │
                            ▼
                       Power BI
+
+             Orchestrated by Apache Airflow
 ```
 
-**Orchestration:** Apache Airflow
-**Warehouse:** Snowflake
-**Transformation:** dbt
-**Storage:** Azure Blob Storage
-**Visualization:** Power BI
-**Skill Extraction:** PyTorch + Transformers
+### Technology Overview
+
+| Component        | Technology                         |
+| ---------------- | ---------------------------------- |
+| Data Collection  | Python, Requests, BeautifulSoup    |
+| Containerization | Docker, Docker Compose             |
+| Cloud Storage    | Azure Blob Storage                 |
+| Data Warehouse   | Snowflake                          |
+| Transformation   | dbt                                |
+| Orchestration    | Apache Airflow                     |
+| Skill Extraction | PyTorch, Hugging Face Transformers |
+| Visualization    | Power BI                           |
 
 ---
 
-## 🎯 Project Objectives
+# 🏗️ Architecture
+
+JobPulse is organized into the following data layers:
+
+```text
+                         DATA SOURCES
+               ┌───────────┼───────────┐
+               │           │           │
+            Sabbar      Tanqeeb    GulfTalent
+               │           │           │
+               └───────────┼───────────┘
+                           ▼
+                ┌─────────────────────┐
+                │   Python Scrapers   │
+                │      Dockerized     │
+                └──────────┬──────────┘
+                           │
+                           ▼
+                ┌─────────────────────┐
+                │ Azure Blob Storage  │
+                │       BRONZE        │
+                └──────────┬──────────┘
+                           │
+                           ▼
+                ┌─────────────────────┐
+                │   Snowflake RAW     │
+                │                     │
+                │ JOBS_RAW            │
+                │ EXTRACTED_SKILLS    │
+                └──────────┬──────────┘
+                           │
+                           ▼
+                ┌─────────────────────┐
+                │      dbt SILVER     │
+                │                     │
+                │ Staging             │
+                │ Intermediate        │
+                │ Snapshot            │
+                └──────────┬──────────┘
+                           │
+                           ▼
+                ┌─────────────────────┐
+                │      dbt GOLD       │
+                │     Star Schema     │
+                └──────────┬──────────┘
+                           │
+                           ▼
+                     ┌──────────┐
+                     │ Power BI │
+                     └──────────┘
+```
+
+The complete workflow is orchestrated by an **Apache Airflow DAG** running in Docker.
+
+---
+
+# 🔄 Pipeline & Data Lineage
+
+JobPulse includes two complementary views of the pipeline:
+
+* **Airflow DAG:** shows task execution and orchestration dependencies.
+* **dbt Lineage:** shows data/model dependencies inside the transformation layer.
+
+## Airflow Orchestration
+
+The complete workflow is orchestrated by the `jobpulse_pipeline` DAG.
+
+![JobPulse Airflow Pipeline](assets/jobpulse_pipeline-graph.png)
+
+The scraper tasks run in parallel using an Airflow `TaskGroup`, followed by the warehouse loading, transformation, snapshot, NLP, mart, and testing stages.
+
+## dbt Data Lineage
+
+The dbt lineage shows dependencies between the models used to transform the raw data into analytics-ready Gold models.
+
+![JobPulse dbt Lineage](assets/jobpulse_lineage.svg)
+
+---
+
+# 🎯 Project Objectives
 
 JobPulse was built to demonstrate a complete data engineering workflow:
 
@@ -46,62 +133,9 @@ JobPulse was built to demonstrate a complete data engineering workflow:
 * Handle real-world data quality issues and cross-source duplicates.
 * Track job status changes using **dbt snapshots**.
 * Build a tested **star schema** in the Gold layer.
-* Extract job skills from descriptions using an NLP component.
-* Orchestrate the full pipeline with Apache Airflow.
-* Provide analytical data for a Power BI dashboard.
-
----
-
-# 🏗️ Architecture
-
-```text
-                        DATA SOURCES
-              ┌────────────┼────────────┐
-              │            │            │
-           Sabbar       Tanqeeb     GulfTalent
-              │            │            │
-              └────────────┼────────────┘
-                           ▼
-                ┌─────────────────────┐
-                │   Python Scrapers   │
-                │     Dockerized      │
-                └──────────┬──────────┘
-                           │
-                           ▼
-                ┌─────────────────────┐
-                │ Azure Blob Storage  │
-                │       BRONZE        │
-                └──────────┬──────────┘
-                           │
-                           ▼
-                ┌─────────────────────┐
-                │ Snowflake RAW       │
-                │ JOBS_RAW            │
-                │ EXTRACTED_SKILLS    │
-                └──────────┬──────────┘
-                           │
-                           ▼
-                ┌─────────────────────┐
-                │     dbt SILVER      │
-                │                     │
-                │ staging             │
-                │ intermediate        │
-                │ snapshot            │
-                └──────────┬──────────┘
-                           │
-                           ▼
-                ┌─────────────────────┐
-                │      dbt GOLD       │
-                │    Star Schema      │
-                └──────────┬──────────┘
-                           │
-                           ▼
-                     ┌──────────┐
-                     │ Power BI │
-                     └──────────┘
-```
-
-The entire workflow is orchestrated by an **Apache Airflow DAG** running in Docker.
+* Extract job skills from job descriptions using an NLP component.
+* Orchestrate the complete pipeline with **Apache Airflow**.
+* Provide analytics-ready data for a Power BI dashboard.
 
 ---
 
@@ -121,7 +155,7 @@ bronze/
     └── 2026-09-26_....csv
 ```
 
-This provides a historical landing layer and preserves the original extracted data before warehouse transformations.
+This layer preserves the original extracted data and provides a historical landing area before warehouse transformations.
 
 ---
 
@@ -144,7 +178,7 @@ Instead of implementing all transformations in one large model, the pipeline use
 | `int_jobs_industry`         | Cleans industry information                                                   |
 | `int_jobs_company`          | Validates and standardizes company information                                |
 | `int_jobs_cleaned`          | Consolidates cleaned data before key generation                               |
-| `int_jobs_final`            | Generates the `job_key` and prepares incremental data                         |
+| `int_jobs_final`            | Generates `job_key` and prepares incremental data                             |
 | `int_jobs_preferred_source` | Selects the canonical row when the same job appears through multiple channels |
 
 ### City & Region Mapping
@@ -161,7 +195,7 @@ This replaced a large set of manually maintained `CASE WHEN` statements and made
 
 ### Job Status History
 
-A dbt snapshot:
+The dbt snapshot:
 
 ```text
 snapshot_job_status
@@ -175,7 +209,7 @@ For example:
 Active → Closed → Expired
 ```
 
-This allows the project to preserve historical status changes instead of keeping only the latest value.
+This allows the project to preserve historical status changes rather than keeping only the latest value.
 
 ---
 
@@ -190,7 +224,8 @@ The Gold layer provides analytics-ready data using a **star schema**.
 dim_company ─────── fact_job_posting ─────── dim_location
                        │
                        │
-                 dim_source
+                  dim_source
+                       │
                        │
               dim_employment_type
                        │
@@ -201,7 +236,7 @@ dim_company ─────── fact_job_posting ─────── dim_loc
                    dim_skills
 ```
 
-### Main tables
+### Main Tables
 
 * `fact_job_posting`
 * `dim_job`
@@ -231,14 +266,14 @@ JobPulse includes a separate NLP component for extracting skills from job descri
 Snowflake Job Descriptions
             │
             ▼
-     jobpulse-nlp
+       jobpulse-nlp
    PyTorch + Transformers
             │
             ▼
-RAW.EXTRACTED_SKILLS
+    RAW.EXTRACTED_SKILLS
             │
             ▼
-      dbt Gold Models
+       dbt Gold Models
             │
             ├── dim_skills
             └── bridge_job_skills
@@ -250,11 +285,13 @@ The NLP component is containerized separately and executed as an Airflow task af
 
 # 🔄 Airflow Pipeline
 
-The complete workflow is orchestrated by:
+The Airflow DAG is named:
 
 ```text
 jobpulse_pipeline
 ```
+
+The main execution flow is:
 
 ```text
              ┌─ scrape_sabbar ────┐
@@ -287,6 +324,97 @@ The three scraper tasks run in parallel using an Airflow `TaskGroup`.
 The remaining stages execute according to their dependencies.
 
 The DAG is scheduled to run **daily**.
+
+---
+
+# 🧪 Data Quality
+
+One of the main goals of JobPulse was to handle **real-world data quality problems**, rather than assuming clean source data.
+
+## 1. Deduplication
+
+`source_job_id` was not sufficient as a unique identifier.
+
+For example, Sabbar could reuse the same `source_job_id` for a posting associated with multiple cities.
+
+The deduplication logic therefore considers:
+
+```text
+(source_job_id, job_url)
+```
+
+rather than `source_job_id` alone.
+
+## 2. Source vs. Collection Channel
+
+The project separates:
+
+```text
+normalized_job_source
+```
+
+from:
+
+```text
+job_source_channel
+```
+
+`normalized_job_source` represents the original platform associated with the job.
+
+`job_source_channel` represents how the posting reached the pipeline, such as:
+
+```text
+Direct
+Aggregated via Sabbar
+Aggregated via Tanqeeb
+```
+
+This distinction preserves information about both the original source and the collection path.
+
+## 3. Job Status History
+
+`dim_job` depends on the dbt snapshot because the snapshot contains historical status records.
+
+A pipeline issue was discovered when `dbt snapshot` was missing from the Airflow workflow.
+
+This resulted in stale dimension records and orphaned foreign keys, which were detected through dbt `relationships` tests.
+
+The pipeline was updated to explicitly run:
+
+```text
+dbt_snapshot
+```
+
+before building the Gold marts.
+
+## 4. Data Quality Testing
+
+The project currently runs **63 dbt tests**, including:
+
+* `not_null`
+* `unique`
+* `accepted_values`
+* `relationships`
+
+The test suite runs as the final validation stage of the Airflow pipeline.
+
+---
+
+# 📊 Power BI Dashboard
+
+Power BI connects to the Snowflake Gold layer using **Import mode**.
+
+The dashboard provides analysis of:
+
+* Total job postings
+* Jobs by city and region
+* Employment type
+* Workplace type
+* Experience requirements
+* Source platforms
+* Collection channels
+* Extracted skills
+* Job posting trends over time
 
 ---
 
@@ -323,7 +451,7 @@ The DAG is scheduled to run **daily**.
 
 ### Orchestration
 
-* Apache Airflow 3.x
+* Apache Airflow 3.12
 * DockerOperator
 
 ### Skill Extraction
@@ -344,103 +472,16 @@ The DAG is scheduled to run **daily**.
 
 ---
 
-# 🧪 Data Quality
-
-One of the main goals of JobPulse was to handle **real-world data quality problems**, rather than assuming clean source data.
-
-### 1. Deduplication
-
-`source_job_id` was not sufficient as a unique identifier.
-
-For example, Sabbar could reuse the same `source_job_id` for a posting associated with multiple cities.
-
-The deduplication logic therefore considers:
-
-```text
-(source_job_id, job_url)
-```
-
-rather than `source_job_id` alone.
-
-### 2. Source vs. Collection Channel
-
-The project separates:
-
-```text
-normalized_job_source
-```
-
-from:
-
-```text
-job_source_channel
-```
-
-`normalized_job_source` represents the original platform associated with the job.
-
-`job_source_channel` represents how the posting reached the pipeline, such as:
-
-```text
-Direct
-Aggregated via Sabbar
-Aggregated via Tanqeeb
-```
-
-This distinction was necessary because source values that initially appeared inconsistent actually contained useful information about the posting's origin and collection path.
-
-### 3. Job Status History
-
-`dim_job` depends on the dbt snapshot because the snapshot contains the historical status records.
-
-A pipeline issue was discovered when `dbt snapshot` was missing from the Airflow workflow.
-
-This resulted in stale dimension records and orphaned foreign keys, which were detected through dbt `relationships` tests.
-
-The pipeline was updated to explicitly run:
-
-```text
-dbt_snapshot
-```
-
-before building the Gold marts.
-
-### 4. Data Quality Testing
-
-The project currently runs **49 dbt tests**, including:
-
-* `not_null`
-* `unique`
-* `accepted_values`
-* `relationships`
-
-The test suite runs as the final validation stage of the Airflow pipeline.
-
----
-
-# 📊 Power BI Dashboard
-
-Power BI connects to the Snowflake Gold layer using **Import mode**.
-
-The dashboard provides analysis of:
-
-* Total job postings
-* Jobs by city and region
-* Employment type
-* Workplace type
-* Experience requirements
-* Source platforms
-* Collection channels
-* Extracted skills
-* Job posting trends over time
-
----
-
 # 📂 Project Structure
 
 ```text
 JobPulse-Data-Engineering-Project/
 │
 ├── README.md
+│
+├── assets/
+│   ├── jobpulse_pipeline-graph.png
+│   └── jobpulse_lineage.svg
 │
 ├── airflow/
 │   ├── docker-compose.yaml
@@ -466,6 +507,7 @@ JobPulse-Data-Engineering-Project/
 │       │       ├── fact_job_posting.sql
 │       │       ├── bridge_job_skills.sql
 │       │       └── schema.yml
+│       │
 │       └── snapshots/
 │           └── snapshot_job_status.sql
 │
@@ -490,14 +532,14 @@ JobPulse-Data-Engineering-Project/
 
 # 🚀 Getting Started
 
-### 1. Clone the repository
+## 1. Clone the repository
 
 ```bash
 git clone <repository-url>
 cd JobPulse-Data-Engineering-Project
 ```
 
-### 2. Build the images
+## 2. Build the Images
 
 ```bash
 cd src/scraper
@@ -510,7 +552,7 @@ cd ../../airflow
 docker-compose build
 ```
 
-### 3. Configure Airflow
+## 3. Configure Airflow
 
 Airflow platform configuration is stored in:
 
@@ -522,7 +564,7 @@ Pipeline secrets are stored separately as **Airflow Variables** and accessed at 
 
 Sensitive values are never committed to Git.
 
-### 4. Start the pipeline
+## 4. Start the Pipeline
 
 ```bash
 cd airflow
