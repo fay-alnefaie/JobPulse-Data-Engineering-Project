@@ -8,8 +8,10 @@ models:
 
   - name: dim_job
     description: >
-      Job dimension containing the current version of each job.
-      Built from snapshot_job_status and filtered to dbt_valid_to is null.
+      Job dimension containing the current version of each preferred job
+      (one row per job after cross-channel deduplication, matching the grain
+      of fact_job_posting). Built from snapshot_job_status, filtered to
+      dbt_valid_to is null and to job_keys present in int_jobs_preferred_source.
     columns:
       - name: job_key
         description: >

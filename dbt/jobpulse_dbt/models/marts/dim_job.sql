@@ -1,14 +1,13 @@
--- {{ config(materialized="table") }}
-
 select distinct
     job_key,
     source_job_id,
-    job_title, 
+    job_title,
     normalized_job_category as job_category,
     normalized_job_status as job_status,
-    seniority_level 
-    
+    seniority_level
+
 from {{ ref('snapshot_job_status') }}
 
 where job_key is not null
   and dbt_valid_to is null
+  and job_key in (select job_key from {{ ref('int_jobs_preferred_source') }})
