@@ -1,3 +1,5 @@
+{{ config(materialized="table") }}
+
 select *
 from (
     select
@@ -10,11 +12,16 @@ from (
                     when 'Aggregated via Sabbar' then 2
                     when 'Aggregated via Tanqeeb' then 3
                     else 4
-                end
+                end,
+                case when company_url_clean is null then 1 else 0 end,
+                collected_at desc,
+                job_key
         ) as priority_rank,
+
         count(*) over (
             partition by job_title, company_name, normalized_city_name
         ) as channel_duplicate_count
+
     from {{ ref('int_jobs_final') }}
 )
 where priority_rank = 1

@@ -40,11 +40,16 @@ select
 
     j.job_key,
 
-    {{ dbt_utils.generate_surrogate_key([
-        'company_name',
-        'company_url_clean'
-    ]) }} as company_key,
-
+    case
+        when company_name is null
+            and company_url_clean is null
+        then null
+        else {{ dbt_utils.generate_surrogate_key([
+            'company_name',
+            'company_url_clean'
+        ]) }}
+    end as company_key,
+    
     {{ dbt_utils.generate_surrogate_key([
         'normalized_city_name',
         'normalized_region_name',

@@ -104,7 +104,15 @@ with
 
             case
                 when trim(coalesce(job_category, '')) != ''
-                then initcap(trim(job_category))
+                then
+                    case initcap(trim(job_category))
+                        when 'Information Technology' then 'IT'
+                        when 'Human Resources' then 'HR'
+                        when 'Administration' then 'Administrative'
+                        when 'Healthcare & Medical' then 'Healthcare / Medical'
+                        when 'Accounting, Finance & Banking' then 'Finance'
+                        else initcap(trim(job_category))
+                    end
                 else title_derived_category
             end as normalized_job_category,
 

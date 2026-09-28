@@ -154,7 +154,7 @@ with DAG(
         task_id="dbt_run_marts",
         # Only what's strictly downstream of int_jobs_final (the marts) -
         # everything upstream was already built by dbt_run_core.
-        bash_command=f"cd {DBT_PROJECT_DIR} && dbt run -s int_jobs_final+ --exclude int_jobs_final",
+        bash_command=f"cd {DBT_PROJECT_DIR} && dbt run -s int_jobs_final+ stg_extracted_skills+ --exclude int_jobs_final",
     )
 
     dbt_test = BashOperator(

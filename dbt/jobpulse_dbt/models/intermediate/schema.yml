@@ -11,8 +11,15 @@ models:
   - name: int_jobs_city_deduped
     description: "Removes technical duplicates using (source_job_id, job_url) and resolves Sabbar's city from the job URL when the city field itself is unreliable."
     tests:
-      - not_null:
-          column_name: source_job_id
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - source_job_id
+              - job_url
+    columns:
+      - name: source_job_id
+        tests:
+          - not_null
 
   - name: int_jobs_location
     description: "Normalizes city/region/country names using a seed mapping table with a fallback for unmapped values."
@@ -33,8 +40,9 @@ models:
       - name: normalized_country_name
         tests:
           - accepted_values:
-              values:
-                - Saudi Arabia
+              arguments:
+                values:
+                  - Saudi Arabia
 
   - name: int_jobs_dates
     description: "Converts relative date text (e.g. '3 days ago', 'yesterday') into an actual date, based on collected_at."
@@ -51,31 +59,55 @@ models:
           - not_null
       - name: job_source_channel
         tests:
+          - not_null
           - accepted_values:
-              values:
-                - Direct
-                - Aggregated via Tanqeeb
-                - Aggregated via Sabbar
+              arguments:
+                values:
+                  - Direct
+                  - Aggregated via Tanqeeb
+                  - Aggregated via Sabbar
 
   - name: int_jobs_experience
     description: "Parses experience_years text into experience_min/max_years (numeric, never backfilled) and derives seniority_level from range-based thresholds."
     columns:
       - name: seniority_level
         tests:
+          - not_null
           - accepted_values:
-              values:
-                - "Entry-level"
-                - "Associate / Mid-level"
-                - "Senior-level"
-                - "Executive / Director"
-                - "Not Specified"
+              arguments:
+                values:
+                  - "Entry-level"
+                  - "Associate / Mid-level"
+                  - "Senior-level"
+                  - "Executive / Director"
+                  - "Not Specified"
 
   - name: int_jobs_category
-    description: "Cleans raw job_category; falls back to job_title keyword matching when raw is empty. No exclusion filtering."
+    description: "Cleans raw job_category, maps known synonyms to the project's canonical names, and falls back to job_title keyword matching when the raw value is empty. The raw job_category column is intentionally NULL for sources that do not provide one; use normalized_job_category downstream. No exclusion filtering."
     columns:
       - name: source_job_id
         tests:
           - not_null
+
+  - name: int_jobs_category_filtered
+    description: "Restricts the project scope to the 10 approved job categories."
+    columns:
+      - name: normalized_job_category
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - Engineering
+                  - IT
+                  - Administrative
+                  - Sales
+                  - Marketing
+                  - HR
+                  - Finance
+                  - Analyst
+                  - Receptionist
+                  - Healthcare / Medical
 
   - name: int_jobs_industry
     description: "Explicitly labels missing company industry ('Not Specified') and flags coverage via has_industry_data. Missing values are a structural gap from certain scraping sources, confirmed via source breakdown."
@@ -99,14 +131,40 @@ models:
           - not_null
       - name: job_source_channel
         tests:
+          - not_null
           - accepted_values:
-              values:
-                - Direct
-                - Aggregated via Tanqeeb
-                - Aggregated via Sabbar
+              arguments:
+                values:
+                  - Direct
+                  - Aggregated via Tanqeeb
+                  - Aggregated via Sabbar
 
   - name: int_jobs_final
     description: "Adds a stable surrogate key (job_key, built from source_job_id + normalized_job_source + job_url) and applies incremental loading. Entry point for marts."
+    columns:
+      - name: job_key
+        tests:
+          - not_null
+          - unique
+      - name: job_source_channel
+        tests:
+          - not_null
+
+  - name: int_jobs_preferred_source
+    description: >
+      One row per job after cross-channel deduplication on
+      (job_title, company_name, normalized_city_name). Winner selection order:
+      source channel priority (Direct, Aggregated via Sabbar, Aggregated via Tanqeeb),
+      then rows with a non-null company_url_clean, then newest collected_at,
+      then job_key as the final deterministic tie-breaker.
+      Materialized as a table so downstream dimensions and facts read one consistent snapshot.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - job_title
+              - company_name
+              - normalized_city_name
     columns:
       - name: job_key
         tests:

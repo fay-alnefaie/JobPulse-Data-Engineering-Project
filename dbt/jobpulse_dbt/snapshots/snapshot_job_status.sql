@@ -5,7 +5,8 @@
         target_schema='silver',
         unique_key='job_key',
         strategy='check',
-        check_cols=['normalized_job_status']
+        check_cols=['normalized_job_status', 'normalized_job_category', 'seniority_level'],
+        hard_deletes='invalidate'
     )
 }}
 

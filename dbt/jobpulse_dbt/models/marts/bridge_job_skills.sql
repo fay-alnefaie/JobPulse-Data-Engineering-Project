@@ -1,5 +1,3 @@
--- {{ config(materialized='table') }}
-
 with job_skills as (
 
     select
@@ -24,11 +22,22 @@ skills_dimension as (
 
     from {{ ref('dim_skills') }}
 
+),
+
+fact as (
+
+    select
+        job_posting_key,
+        job_key
+
+    from {{ ref('fact_job_posting') }}
+
 )
 
 select
-    job_skills.job_key,
+    fact.job_posting_key,
     skills_dimension.skill_key,
+    'nlp' as extraction_method,
     job_skills.confidence,
     job_skills.evidence_span
 
@@ -37,3 +46,6 @@ from job_skills
 inner join skills_dimension
     on job_skills.skill_name = skills_dimension.skill_name
     and job_skills.skill_category = skills_dimension.skill_category
+
+inner join fact
+    on job_skills.job_key = fact.job_key

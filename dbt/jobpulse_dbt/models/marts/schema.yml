@@ -1,126 +1,261 @@
-version: 2 
- 
-models: 
- 
-  - name: dim_job 
-    columns: 
-      - name: job_key 
-        tests: 
-          - not_null 
-          - unique 
- 
-      - name: seniority_level 
-        tests: 
-          - not_null 
- 
-  - name: dim_company 
-    columns: 
-      - name: company_key 
-        tests: 
-          - not_null 
-          - unique 
- 
-  - name: dim_location 
-    columns: 
-      - name: location_key 
-        tests: 
-          - not_null 
-          - unique 
- 
-  - name: dim_source 
-    columns: 
-      - name: source_key 
-        tests: 
-          - not_null 
-          - unique 
- 
-  - name: dim_employment_type 
-    columns: 
-      - name: employment_type_key 
-        tests: 
-          - not_null 
-          - unique 
- 
-  - name: dim_date 
-    columns: 
-      - name: date_key 
-        tests: 
-          - not_null 
-          - unique 
- 
-  - name: fact_job_posting 
-    columns: 
-      - name: job_posting_key 
-        tests: 
-          - not_null 
-          - unique 
- 
-      - name: job_key 
-        tests: 
-          - not_null 
-          - relationships: 
-              to: ref('dim_job') 
-              field: job_key 
- 
-      - name: company_key 
-        tests: 
-          - not_null 
-          - relationships: 
-              to: ref('dim_company') 
-              field: company_key 
- 
-      - name: location_key 
-        tests: 
-          - not_null 
-          - relationships: 
-              to: ref('dim_location') 
-              field: location_key 
- 
-      - name: source_key 
-        tests: 
-          - not_null 
-          - relationships: 
-              to: ref('dim_source') 
-              field: source_key 
- 
-      - name: employment_type_key 
-        tests: 
-          - relationships: 
-              to: ref('dim_employment_type') 
-              field: employment_type_key 
- 
-      - name: job_posted_date_key 
-        tests: 
-          - relationships: 
-              to: ref('dim_date') 
-              field: date_key
+version: 2
+
+models:
+
+  # ---------------------------------------------------------------
+  # Dimensions
+  # ---------------------------------------------------------------
+
+  - name: dim_job
+    description: >
+      Job dimension containing the current version of each job.
+      Built from snapshot_job_status and filtered to dbt_valid_to is null.
+    columns:
+      - name: job_key
+        description: >
+          Surrogate key uniquely identifying a job, generated from
+          source_job_id, normalized_job_source, and job_url.
+        tests:
+          - not_null
+          - unique
+
+      - name: source_job_id
+        description: Job identifier assigned by the source platform. Not unique on its own.
+
+      - name: job_title
+        description: Job title as posted.
+
+      - name: job_category
+        description: Normalized job category.
+
+      - name: job_status
+        description: Current status of the job posting. History is tracked in snapshot_job_status.
+
+      - name: seniority_level
+        description: >
+          Seniority level derived from the parsed experience requirement.
+          Defaults to "Not Specified" when unavailable.
+        tests:
+          - not_null
+
+
+  - name: dim_company
+    description: >
+      Company dimension containing one row per distinct combination of
+      company name and cleaned company URL. The same real-world company can
+      appear more than once when its URL differs or is unavailable
+      (for example, sources whose company URL is nulled out).
+    columns:
+      - name: company_key
+        description: Surrogate key generated from company_name and company_url_clean.
+        tests:
+          - not_null
+          - unique
+
+
+  - name: dim_location
+    description: >
+      Location dimension based on normalized city, region, and country.
+      City may be NULL when the source value represents a region or country
+      rather than a specific city.
+    columns:
+      - name: location_key
+        description: Surrogate key generated from normalized city, region, and country.
+        tests:
+          - not_null
+          - unique
+
+
+  - name: dim_source
+    description: >
+      Source dimension combining the original job platform with the
+      channel through which the job entered the pipeline.
+    columns:
+      - name: source_key
+        description: Surrogate key generated from normalized_job_source and job_source_channel.
+        tests:
+          - not_null
+          - unique
+
+
+  - name: dim_employment_type
+    description: >
+      Employment type dimension containing normalized employment types.
+    columns:
+      - name: employment_type_key
+        description: Surrogate key generated from normalized_employment_type.
+        tests:
+          - not_null
+          - unique
+
+
+  - name: dim_date
+    description: Calendar dimension used for job posting dates.
+    columns:
+      - name: date_key
+        description: Calendar date key used to join job postings to the date dimension.
+        tests:
+          - not_null
+          - unique
 
 
   - name: dim_skills
-    description: "Dimension table containing unique extracted skills."
+    description: >
+      Dimension containing unique skills extracted from job descriptions.
+      Grain: one row per (skill_name, skill_category).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - skill_name
+              - skill_category
     columns:
       - name: skill_key
+        description: Surrogate key uniquely identifying a skill.
         tests:
           - not_null
           - unique
 
       - name: skill_name
+        description: Normalized skill name.
         tests:
           - not_null
 
       - name: skill_category
+        description: Normalized skill category, such as hard or soft skill.
         tests:
           - not_null
 
+
+  # ---------------------------------------------------------------
+  # Fact
+  # ---------------------------------------------------------------
+
+  - name: fact_job_posting
+    description: >
+      Grain: one row per preferred job posting after deduplication across
+      source channels. Source preference is Direct, then Aggregated via
+      Sabbar, then Aggregated via Tanqeeb.
+    columns:
+      - name: job_posting_key
+        description: >
+          Sequential surrogate key generated with row_number().
+          Not stable between rebuilds; use job_key for persistent references.
+        tests:
+          - not_null
+          - unique
+
+      - name: job_key
+        description: Foreign key to dim_job. Unique because the fact holds one row per preferred job posting.
+        tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('dim_job')
+                field: job_key
+
+      - name: company_key
+        description: Foreign key to dim_company. Null when company information is unavailable.
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_company')
+                field: company_key
+
+      - name: location_key
+        description: Foreign key to dim_location.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_location')
+                field: location_key
+
+      - name: source_key
+        description: Foreign key to dim_source.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_source')
+                field: source_key
+
+      - name: employment_type_key
+        description: >
+          Foreign key to dim_employment_type. NULL when the employment
+          type is unknown.
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_employment_type')
+                field: employment_type_key
+
+      - name: job_posted_date_key
+        description: >
+          Foreign key to dim_date. NULL when the posting date could not
+          be resolved.
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+
+      - name: workplace_type
+        description: Normalized workplace type, such as On-site, Remote, Hybrid, or Field.
+
+      - name: is_salary_disclosed
+        description: Indicates whether the posting discloses a salary.
+
+      - name: job_url
+        description: URL of the job posting on the source platform.
+
+      - name: description
+        description: Job description text.
+
+      - name: experience_min_years
+        description: Minimum years of experience required.
+
+      - name: experience_max_years
+        description: >
+          Maximum years of experience required. NULL when the requirement
+          is open-ended or unavailable.
+
+      - name: experience_is_open_ended
+        description: Indicates whether the experience requirement has no upper bound.
+
+      - name: collected_at
+        description: Timestamp when the job listing was scraped.
+
+
+  # ---------------------------------------------------------------
+  # Bridge
+  # ---------------------------------------------------------------
 
   - name: bridge_job_skills
-    description: "Bridge table connecting jobs with extracted skills."
+    description: >
+      Bridge table linking job postings to extracted skills.
+      Grain: one row per (job_posting_key, skill_key).
+      Includes only high-confidence extractions (confidence >= 0.85).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - job_posting_key
+              - skill_key
+
     columns:
-      - name: job_key
+      - name: job_posting_key
+        description: Foreign key to fact_job_posting.
         tests:
           - not_null
+          - relationships:
+              arguments:
+                to: ref('fact_job_posting')
+                field: job_posting_key
 
       - name: skill_key
+        description: Foreign key to dim_skills.
         tests:
           - not_null
           - relationships:
@@ -129,5 +264,13 @@ models:
                 field: skill_key
 
       - name: confidence
+        description: NLP confidence score for the extracted skill, ranging from 0 to 1.
         tests:
           - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0.85
+                max_value: 1
+
+      - name: evidence_span
+        description: Text span from the job description supporting the extracted skill.
