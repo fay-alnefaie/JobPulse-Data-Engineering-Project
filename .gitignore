@@ -252,3 +252,6 @@ data/cleaned_data/*.csv
 # --- Docker ---
 *.pyc
 
+
+jobpulse_lineage.dot
+generate_lineage.py
