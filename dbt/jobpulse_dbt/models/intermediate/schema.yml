@@ -153,11 +153,13 @@ models:
   - name: int_jobs_preferred_source
     description: >
       One row per job after cross-channel deduplication on
-      (job_title, company_name, normalized_city_name). Winner selection order:
-      source channel priority (Direct, Aggregated via Sabbar, Aggregated via Tanqeeb),
-      then rows with a non-null company_url_clean, then newest collected_at,
-      then job_key as the final deterministic tie-breaker.
-      Materialized as a table so downstream dimensions and facts read one consistent snapshot.
+      (trim/lower(job_title), trim/lower(company_name), normalized_city_name) --
+      case and whitespace differences are treated as the same job.
+      Winner selection order: source channel priority (Direct, Aggregated via
+      Sabbar, Aggregated via Tanqeeb), then rows with a non-null
+      company_url_clean, then newest collected_at, then job_key as the final
+      deterministic tie-breaker. Materialized as a table so downstream
+      dimensions and facts read one consistent snapshot.
     tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
