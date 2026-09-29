@@ -488,7 +488,8 @@ JobPulse-Data-Engineering-Project/
 ## 1. Clone the Repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/fay-alnefaie/JobPulse-Data-Engineering-Project.git
+
 cd JobPulse-Data-Engineering-Project
 ```
 
